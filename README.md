@@ -1,1 +1,2 @@
-# resourcepack-builder
+# MC server builder
+Docs in wiki tab
