@@ -23,8 +23,11 @@ This tool will open the folder in which the server plugins are stored. To instal
 
 
 **Router settings**
+
 This tool will open your router settings. Because the program can't manipulate your router settings you need to set things manually in it.
+
 **After server commands**
+
 In this tool, you can set the path for the executable which will be executed when the server is stopped. **Not implemented yet!!**
 
 
