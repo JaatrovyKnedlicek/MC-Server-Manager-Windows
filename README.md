@@ -11,10 +11,12 @@ Starting a server is also easy. Just select Start Server. If you want to stop th
 MC Server Manager has server managing tools that can be used. With future updates, I am planning to add more and update existing ones. 
 
 **Server properties**
+
 This tool can be used for changing server settings. The tool will open the `server.properties` file. In this file are values. 
 [Value meanings](https://shockbyte.com/billing/knowledgebase/84/How-to-Configure-Your-Minecraft-Server-serverproperties.html)
 
 **Plugins**
+
 This tool will open the folder in which the server plugins are stored. To install the plugin move it to this folder. For removing the plugin delete it.
 
 > Note: The Plugin can also create a folder. If you are removing the plugin don't forget to remove this folder.
