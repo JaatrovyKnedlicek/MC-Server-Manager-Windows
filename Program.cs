@@ -1,31 +1,16 @@
-﻿//GPL-3.0-only or GPL-3.0-or-later
+//GPL-3.0-only or GPL-3.0-or-later
 //Copyright Ján Repka 2023
 using System.Diagnostics;
 using System.Net;
 using System.Net.NetworkInformation;
-using System.Runtime.CompilerServices;
-using System.Security.Principal;
+
 
 namespace MC_Server_Manager {
-    class Utilities {
-        public static bool IsAdministrator
-        {
-            get
-            {
-                var identity = WindowsIdentity.GetCurrent();
-                WindowsPrincipal principal = new WindowsPrincipal(identity);
-                return principal.IsInRole(WindowsBuiltInRole.Administrator);
-            }
-        }
-        
-    }
+
     
     class NewServer {
         public static void Setup() {
             Console.Clear();
-
-            Utilities utilities = new();
-            bool adminPrivilegs = Utilities.IsAdministrator;
 
             try {
                 if (!File.Exists(Environment.CurrentDirectory + @"\MC_Server_Manager_options.txt")) {
@@ -153,6 +138,46 @@ namespace MC_Server_Manager {
             serverProcess.Start();
             serverProcess.WaitForExit();
 
+            string AfterServerCommandsPath = "0";
+            string AfterServerCommandsArgs = "0";
+
+            try {
+                using (StreamReader reader = new StreamReader(Environment.CurrentDirectory + @"\MC_Server_Manager_options.txt")) {
+                    string line;
+                    while ((line = reader.ReadLine()) != null) {
+                        if (line.StartsWith("after_server_path=")) {
+                            AfterServerCommandsPath = line.Substring("after_server_path=".Length);
+                            break;
+                        }
+                    }
+                }
+                using (StreamReader reader = new StreamReader(Environment.CurrentDirectory + @"\MC_Server_Manager_options.txt")) {
+                    string line;
+                    while ((line = reader.ReadLine()) != null) {
+                        if (line.StartsWith("after_server_args=")) {
+                            AfterServerCommandsArgs = line.Substring("after_server_args=".Length);
+                            break;
+                        }
+                    }
+                }
+
+                if (AfterServerCommandsPath != "0") {
+                    Console.WriteLine("Executing after server");
+                    Process afterServerProcess = new();
+                    afterServerProcess.StartInfo.FileName = AfterServerCommandsPath;
+                    afterServerProcess.StartInfo.Arguments = AfterServerCommandsArgs;
+
+                    afterServerProcess.Start();
+                    afterServerProcess.WaitForExit();
+
+                }
+            }
+            catch (IOException e) {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine("Error:" + e);
+                Console.ForegroundColor = ConsoleColor.White;
+            }
+
             Console.ForegroundColor = ConsoleColor.Green;
             Console.WriteLine("Server was stopped. Press enter to go to main menu...");
             Console.ForegroundColor = ConsoleColor.White;
@@ -230,7 +255,7 @@ namespace MC_Server_Manager {
                     string line;
                     while ((line = reader.ReadLine()) != null) {
                         if (line.StartsWith("after_server_path=")) {
-                            AfterServerCommandsPath = line.Substring("after_server_parg=".Length);
+                            AfterServerCommandsPath = line.Substring("after_server_path=".Length);
                             AfterServerCommandsPathFounded = true;
                             Console.WriteLine("after_server_path was founded with value:" + AfterServerCommandsPath);
                             break;
@@ -248,6 +273,35 @@ namespace MC_Server_Manager {
                 Console.ForegroundColor = ConsoleColor.Red;
                 Console.WriteLine("Error:" + e);
                 Console.ForegroundColor = ConsoleColor.White;
+                Console.ReadLine();
+            }
+
+
+            string AfterServerCommandsArgs = null;
+            bool AfterServerCommandsArgsFounded = false;
+            try {
+                using (StreamReader reader = new StreamReader(Environment.CurrentDirectory + @"\MC_Server_Manager_options.txt")) {
+                    string line;
+                    while ((line = reader.ReadLine()) != null) {
+                        if (line.StartsWith("after_server_args=")) {
+                            AfterServerCommandsArgs = line.Substring("after_server_args=".Length);
+                            AfterServerCommandsArgsFounded = true;
+                            Console.WriteLine("after_server_args was founded with value:" + AfterServerCommandsPath);
+                            break;
+                        }
+                    }
+                }
+
+                if (!AfterServerCommandsArgsFounded) {
+                    File.AppendAllText(Environment.CurrentDirectory + @"\MC_Server_Manager_options.txt" , "after_server_args=0\n");
+                    Console.WriteLine("after_server_args was setted to 0");
+                    AfterServerCommands();
+                }
+            }
+            catch (IOException e) {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine("Error:" + e);
+                Console.ForegroundColor = ConsoleColor.White;
             }
             Console.Clear();
 
@@ -257,14 +311,19 @@ namespace MC_Server_Manager {
             else {
                 Console.WriteLine("After server commands path: " + AfterServerCommandsPath);
             }
+            if (AfterServerCommandsArgs == "0") {
+                Console.WriteLine("After server args: Not setted");
+            }
+            else {
+                Console.WriteLine("After server atgs: " + AfterServerCommandsArgs);
+            }
 
-            Console.WriteLine("\n1. Edit value\n0. Go back");
+            Console.WriteLine("\n1. Edit path\n2. Edit arguments\n0. Go back");
             int AFC_Ans = int.Parse(Console.ReadLine());
             if (AFC_Ans == 1) {
                 Console.Clear();
                 Console.Write("Write path: ");
                 AfterServerCommandsPath = Console.ReadLine();
-;
                 try {
                     string[] lines = File.ReadAllLines(Environment.CurrentDirectory + @"\MC_Server_Manager_options.txt");
                     for (int i = 0; i < lines.Length; i++) {
@@ -284,6 +343,28 @@ namespace MC_Server_Manager {
                 ManagmentMenu();
                 
 
+            }
+            else if (AFC_Ans == 2) {
+                Console.Clear();
+                Console.Write("Write args: ");
+                AfterServerCommandsArgs = Console.ReadLine();
+                try {
+                    string[] lines = File.ReadAllLines(Environment.CurrentDirectory + @"\MC_Server_Manager_options.txt");
+                    for (int i = 0; i < lines.Length; i++) {
+                        if (lines[i].StartsWith("after_server_args=")) {
+                            lines[i] = "after_server_args=" + AfterServerCommandsArgs;
+                            break;
+                        }
+                    }
+
+                    File.WriteAllLines(Environment.CurrentDirectory + @"\MC_Server_Manager_options.txt", lines);
+                }
+                catch (IOException e) {
+                    Console.ForegroundColor = ConsoleColor.Red;
+                    Console.WriteLine("Error: " + e);
+                    Console.ForegroundColor = ConsoleColor.White;
+                }
+                ManagmentMenu();
             }
             else {
                 ManagmentMenu();
