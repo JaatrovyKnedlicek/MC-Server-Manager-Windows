@@ -1,0 +1,48 @@
+# Build artifacts
+bin/
+obj/
+
+# Visual Studio
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Rider
+.idea/
+
+# Visual Studio Code
+.vscode/
+
+# NuGet
+*.nupkg
+packages/
+.nuget/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Resharper
+_ReSharper*/
+*.DotSettings.user
+
+# Temporary files
+*.tmp
+*.cache
+
+# Generated files
+*.vsix
+
+# Paper versions file (optional)
+paper-versions.json
+
+# User-specific project files
+*.csproj.user
+
+# Ignore generated index files
+.vs/**/*
