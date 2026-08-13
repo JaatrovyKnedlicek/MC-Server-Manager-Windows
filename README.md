@@ -1,6 +1,6 @@
 # Minecraft Server Manager
 
-> **🚧Everything, including this file, is under construction **
+> 🚧Everything, including this file, is under construction
 
 Lightweight console application built on C# for creating and managing locally hosted Java Edition servers.
 ![screenshot](https://github.com/JaatrovyKnedlicek/MC-Server-Manager-Windows/blob/main/Sn%C3%ADmka%20obrazovky%202026-08-13%20025506.png?raw=true)
