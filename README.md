@@ -1,7 +1,7 @@
 
 # MC Server Manager 3
 
-A lightweight Windows desktop manager for running and managing local Minecraft server instances. The application is a Windows Forms app written in C# and targets .NET 9.
+A lightweight Windows desktop manager for running and managing local Minecraft server instances. The application is a Windows Forms app written in C# and targets .NET 10.
 ![screenshot](https://github.com/JaatrovyKnedlicek/MC-Server-Manager-Windows/blob/main/Sn%C3%ADmka%20obrazovky%202026-08-13%20025506.png?raw=true)
 
 ## Features
@@ -12,18 +12,17 @@ A lightweight Windows desktop manager for running and managing local Minecraft s
 
 ## Prerequisites
 
-- .NET 9 runtime / SDK
-- Windows (Windows Forms desktop app)
-- Visual Studio 2022/2023 or `dotnet` CLI for building
+- Windows 7 or higher (Windows 10 recommended)
+- .NET 10 runtime/SDK for framework dependant version
 
 ## Instalation
 To install this app:
 
- 1. Go to the Releases tab
- 2. Download the `win-x64.zip` file
- 3. Unzip it and run the `.exe` file
+ 1. Go to the [Releases](https://github.com/JaatrovyKnedlicek/MC-Server-Manager-Windows/releases/) tab
+ 2. Download the `win-x64.exe` or `framework-dependant` version
+ 3. Run it
 
-To run this app, you need .NET 9 Runtime installed.
+To run the `framework-dependant` version you need to have installed .NET Runtime 10.
 
 ## Build and run
 
