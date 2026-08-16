@@ -6,6 +6,7 @@ using System.Net.Http;
 using System.Net.Sockets;
 using System.Drawing;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text.Json;
@@ -64,6 +65,151 @@ namespace MC_Server_Manager_3
             // process instance when running (may be detached)
             [JsonIgnore]
             public Process? ProcessInstance { get; set; }
+        }
+
+        // Backup world (world, nether, end) into a single zip file
+        private async void backupWorldToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            if (SelectedIndex < 0) { MessageBox.Show("Select a server first.", "Backup world", MessageBoxButtons.OK, MessageBoxIcon.Information); return; }
+            var s = servers[SelectedIndex];
+            if (string.IsNullOrEmpty(s.FolderPath) || !Directory.Exists(s.FolderPath)) { MessageBox.Show("Server folder not found.", "Backup world", MessageBoxButtons.OK, MessageBoxIcon.Error); return; }
+
+            using var sfd = new SaveFileDialog() { Filter = "Zip Archive|*.zip", FileName = MakeSafeFileNameForZip(s.Name + "-world.zip") };
+            if (sfd.ShowDialog(this) != DialogResult.OK) return;
+
+            // candidate world directories to include
+            var candidates = new[] { "world", "world_nether", "world_the_end", "DIM-1", "DIM1" };
+            var dirs = candidates.Select(d => Path.Combine(s.FolderPath, d)).Where(Directory.Exists).ToList();
+            if (dirs.Count == 0)
+            {
+                MessageBox.Show("No world folders found (expected e.g. 'world', 'world_nether', 'world_the_end').", "Backup world", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            var cts = new CancellationTokenSource();
+            using var dlg = new ProgressDialog(cts, "Creating world backup...");
+            var progress = new Progress<int>(pct => dlg.SetProgress(pct));
+            try
+            {
+                dlg.Show(this);
+                await Task.Run(() => CreateZipFromDirectories(s.FolderPath, dirs, sfd.FileName, progress, cts.Token));
+                MessageBox.Show("World backup completed.", "Backup world", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+            catch (OperationCanceledException)
+            {
+                MessageBox.Show("World backup cancelled.", "Backup world", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"World backup failed: {ex.Message}", "Backup world", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            finally
+            {
+                if (dlg.Visible) dlg.Close();
+            }
+        }
+
+        // Backup entire server folder into a zip
+        private async void backupServerToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            if (SelectedIndex < 0) { MessageBox.Show("Select a server first.", "Backup server", MessageBoxButtons.OK, MessageBoxIcon.Information); return; }
+            var s = servers[SelectedIndex];
+            if (string.IsNullOrEmpty(s.FolderPath) || !Directory.Exists(s.FolderPath)) { MessageBox.Show("Server folder not found.", "Backup server", MessageBoxButtons.OK, MessageBoxIcon.Error); return; }
+
+            using var sfd = new SaveFileDialog() { Filter = "Zip Archive|*.zip", FileName = MakeSafeFileNameForZip(s.Name + "-server.zip") };
+            if (sfd.ShowDialog(this) != DialogResult.OK) return;
+
+            var cts = new CancellationTokenSource();
+            using var dlg = new ProgressDialog(cts, "Creating server backup...");
+            var progress = new Progress<int>(pct => dlg.SetProgress(pct));
+            try
+            {
+                dlg.Show(this);
+                // include all files under server folder
+                await Task.Run(() => CreateZipFromDirectories(s.FolderPath, new List<string> { s.FolderPath }, sfd.FileName, progress, cts.Token));
+                MessageBox.Show("Server backup completed.", "Backup server", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+            catch (OperationCanceledException)
+            {
+                MessageBox.Show("Server backup cancelled.", "Backup server", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Server backup failed: {ex.Message}", "Backup server", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            finally
+            {
+                if (dlg.Visible) dlg.Close();
+            }
+        }
+
+        // Helper: make a simple safe filename
+        private string MakeSafeFileNameForZip(string name)
+        {
+            foreach (var c in Path.GetInvalidFileNameChars()) name = name.Replace(c, '-');
+            if (string.IsNullOrWhiteSpace(name)) name = "backup.zip";
+            if (!name.EndsWith(".zip", StringComparison.OrdinalIgnoreCase)) name += ".zip";
+            return name;
+        }
+
+        // Create zip from one or more directories. If directories contains the root itself, include whole tree.
+        private void CreateZipFromDirectories(string sourceRoot, System.Collections.Generic.List<string> directories, string destinationZip, IProgress<int> progress, CancellationToken ct)
+        {
+            // collect files
+            var allFiles = new System.Collections.Generic.List<string>();
+            foreach (var dir in directories)
+            {
+                if (Directory.Exists(dir))
+                {
+                    var files = Directory.GetFiles(dir, "*", SearchOption.AllDirectories);
+                    allFiles.AddRange(files);
+                }
+                else if (File.Exists(dir))
+                {
+                    allFiles.Add(dir);
+                }
+            }
+
+            if (allFiles.Count == 0)
+                throw new InvalidOperationException("No files found to include in the archive.");
+
+            // ensure destination directory
+            var destDir = Path.GetDirectoryName(destinationZip);
+            if (!string.IsNullOrEmpty(destDir)) Directory.CreateDirectory(destDir);
+
+            // create temp zip then move (to avoid partial files when cancelled)
+            var tmp = destinationZip + ".tmp" + Guid.NewGuid().ToString("N");
+            try
+            {
+                using (var fs = new FileStream(tmp, FileMode.Create, FileAccess.ReadWrite))
+                using (var za = new ZipArchive(fs, ZipArchiveMode.Create, leaveOpen: false))
+                {
+                    for (int i = 0; i < allFiles.Count; i++)
+                    {
+                        ct.ThrowIfCancellationRequested();
+                        var file = allFiles[i];
+                        // compute relative path to sourceRoot; if directories contained full root, use that
+                        string entryName = Path.GetRelativePath(sourceRoot, file).Replace('\\', '/');
+                        if (string.IsNullOrEmpty(entryName) || entryName == ".") entryName = Path.GetFileName(file);
+
+                        var entry = za.CreateEntry(entryName, CompressionLevel.Optimal);
+                        using var entryStream = entry.Open();
+                        using var fileStream = new FileStream(file, FileMode.Open, FileAccess.Read, FileShare.Read);
+                        fileStream.CopyTo(entryStream);
+
+                        var pct = (int)(((i + 1) * 100L) / allFiles.Count);
+                        progress?.Report(pct);
+                    }
+                }
+
+                // move tmp to destination (overwrite)
+                if (File.Exists(destinationZip)) File.Delete(destinationZip);
+                File.Move(tmp, destinationZip);
+            }
+            finally
+            {
+                try { if (File.Exists(tmp)) File.Delete(tmp); } catch { }
+            }
         }
 
         // DTO used for persisting server configuration
@@ -607,7 +753,7 @@ namespace MC_Server_Manager_3
             MessageBox.Show("Toggle Status Bar - not implemented yet.", "View", MessageBoxButtons.OK, MessageBoxIcon.Information);
 
         private void aboutToolStripMenuItem_Click(object sender, EventArgs e) =>
-            MessageBox.Show("Minecraft Server Manager 3.0.0-indev\nVersion: 3.0.0-indev\n© Ján Repka 2025", "About", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            MessageBox.Show("Minecraft Server Manager 3.0.0-alpha3\nVersion: 3.0.0-indev\n© Ján Repka 2026", "About", MessageBoxButtons.OK, MessageBoxIcon.Information);
 
         private void label1_Click(object sender, EventArgs e) { }
 
@@ -727,7 +873,7 @@ namespace MC_Server_Manager_3
 
         private void deleteToolStripMenuItem_Click(object sender, EventArgs e) => DeleteSelectedServer();
 
-        // Opens the selected server's server.properties in Notepad (creates file if missing)
+        // Opens the selected server's server.properties in an editor window (creates file if missing)
         private void EditSelectedServerProperties()
         {
             if (SelectedIndex < 0) { MessageBox.Show("Select a server first.", "Edit Properties", MessageBoxButtons.OK, MessageBoxIcon.Information); return; }
@@ -752,24 +898,85 @@ namespace MC_Server_Manager_3
                 if (!File.Exists(propsPath))
                 {
                     // create a simple default file
-                    File.WriteAllText(propsPath, "# server.properties\n# Generated by MC Server Manager\n");
+                    File.WriteAllText(propsPath, "# server.properties\r\n# Generated by MC Server Manager\r\n");
                 }
 
                 // remember path
                 s.PropertiesPath = propsPath;
 
-                var psi = new ProcessStartInfo
-                {
-                    FileName = "notepad.exe",
-                    Arguments = $"\"{propsPath}\"",
-                    UseShellExecute = true
-                };
-                Process.Start(psi);
+                using var dlg = new ServerPropertiesForm(propsPath);
+                dlg.ShowDialog(this);
             }
             catch (Exception ex)
             {
                 MessageBox.Show($"Failed to open server.properties: {ex.Message}", "Edit Properties", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
+        }
+
+        // Open plugins folder for selected server (or servers root if none selected)
+        private void openPluginsFolderToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            string path;
+            if (SelectedIndex >= 0 && SelectedIndex < servers.Count && !string.IsNullOrEmpty(servers[SelectedIndex].FolderPath))
+            {
+                path = Path.Combine(servers[SelectedIndex].FolderPath, "plugins");
+            }
+            else
+            {
+                path = ServersRoot;
+            }
+
+            try
+            {
+                Directory.CreateDirectory(path);
+                Process.Start(new ProcessStartInfo { FileName = path, UseShellExecute = true });
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Failed to open folder: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        // Open router settings page in default browser; tries to detect default gateway and falls back to 192.168.1.1
+        private void openRouterSettingsToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            string gateway = GetDefaultGateway() ?? "192.168.1.1";
+            var url = $"http://{gateway}/";
+            try
+            {
+                Process.Start(new ProcessStartInfo { FileName = url, UseShellExecute = true });
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Failed to open router settings: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        // Attempt to find the first IPv4 default gateway on active interfaces
+        private string? GetDefaultGateway()
+        {
+            try
+            {
+                foreach (var nic in System.Net.NetworkInformation.NetworkInterface.GetAllNetworkInterfaces())
+                {
+                    if (nic.OperationalStatus != System.Net.NetworkInformation.OperationalStatus.Up)
+                        continue;
+                    var props = nic.GetIPProperties();
+                    foreach (var ga in props.GatewayAddresses)
+                    {
+                        var addr = ga.Address;
+                        if (addr != null && addr.AddressFamily == AddressFamily.InterNetwork && !addr.ToString().Equals("0.0.0.0"))
+                            return addr.ToString();
+                    }
+                }
+            }
+            catch { }
+            return null;
+        }
+
+        private void Form1_Load(object sender, EventArgs e)
+        {
+
         }
     }
 }

@@ -133,7 +133,7 @@ namespace MC_Server_Manager_3
             chkEulaAccept.Location = new System.Drawing.Point(10, 132);
             chkEulaAccept.Name = "chkEulaAccept";
             chkEulaAccept.Size = new System.Drawing.Size(260, 19);
-            chkEulaAccept.Text = "I agree to the Minecraft EULA (eula.txt will be created)";
+            chkEulaAccept.Text = "I agree to the Minecraft EULA (https://www.minecraft.net/en-us/eula)";
             chkEulaAccept.UseVisualStyleBackColor = true;
 
             // panelStep3
