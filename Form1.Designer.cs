@@ -12,6 +12,7 @@ namespace MC_Server_Manager_3
 
         private void InitializeComponent()
         {
+            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(Form1));
             menuStrip1 = new MenuStrip();
             fileToolStripMenuItem = new ToolStripMenuItem();
             newToolStripMenuItem = new ToolStripMenuItem();
@@ -19,6 +20,8 @@ namespace MC_Server_Manager_3
             toolsToolStripMenuItem = new ToolStripMenuItem();
             openPluginsFolderToolStripMenuItem = new ToolStripMenuItem();
             openRouterSettingsToolStripMenuItem = new ToolStripMenuItem();
+            serverPropertiesToolStripMenuItem = new ToolStripMenuItem();
+            editRamToolStripMenuItem = new ToolStripMenuItem();
             backupWorldToolStripMenuItem = new ToolStripMenuItem();
             backupServerToolStripMenuItem = new ToolStripMenuItem();
             editToolStripMenuItem = new ToolStripMenuItem();
@@ -57,14 +60,6 @@ namespace MC_Server_Manager_3
             menuStrip1.TabIndex = 0;
             menuStrip1.Text = "menuStrip1";
             // 
-            // serverPropertiesToolStripMenuItem
-            // 
-            serverPropertiesToolStripMenuItem = new ToolStripMenuItem();
-            serverPropertiesToolStripMenuItem.Name = "serverPropertiesToolStripMenuItem";
-            serverPropertiesToolStripMenuItem.Size = new Size(195, 22);
-            serverPropertiesToolStripMenuItem.Text = "Server Properties...";
-            serverPropertiesToolStripMenuItem.Click += btnEditProperties_Click;
-            // 
             // fileToolStripMenuItem
             // 
             fileToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { newToolStripMenuItem, exitToolStripMenuItem });
@@ -88,7 +83,7 @@ namespace MC_Server_Manager_3
             // 
             // toolsToolStripMenuItem
             // 
-            toolsToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { openPluginsFolderToolStripMenuItem, openRouterSettingsToolStripMenuItem, serverPropertiesToolStripMenuItem, backupWorldToolStripMenuItem, backupServerToolStripMenuItem });
+            toolsToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { openPluginsFolderToolStripMenuItem, openRouterSettingsToolStripMenuItem, serverPropertiesToolStripMenuItem, editRamToolStripMenuItem, backupWorldToolStripMenuItem, backupServerToolStripMenuItem });
             toolsToolStripMenuItem.Name = "toolsToolStripMenuItem";
             toolsToolStripMenuItem.Size = new Size(47, 20);
             toolsToolStripMenuItem.Text = "Tools";
@@ -96,29 +91,43 @@ namespace MC_Server_Manager_3
             // openPluginsFolderToolStripMenuItem
             // 
             openPluginsFolderToolStripMenuItem.Name = "openPluginsFolderToolStripMenuItem";
-            openPluginsFolderToolStripMenuItem.Size = new Size(195, 22);
+            openPluginsFolderToolStripMenuItem.Size = new Size(186, 22);
             openPluginsFolderToolStripMenuItem.Text = "Open Plugins Folder";
             openPluginsFolderToolStripMenuItem.Click += openPluginsFolderToolStripMenuItem_Click;
             // 
             // openRouterSettingsToolStripMenuItem
             // 
             openRouterSettingsToolStripMenuItem.Name = "openRouterSettingsToolStripMenuItem";
-            openRouterSettingsToolStripMenuItem.Size = new Size(195, 22);
-            openRouterSettingsToolStripMenuItem.Text = "Open Router Settings...";
+            openRouterSettingsToolStripMenuItem.Size = new Size(186, 22);
+            openRouterSettingsToolStripMenuItem.Text = "Open Router Settings";
             openRouterSettingsToolStripMenuItem.Click += openRouterSettingsToolStripMenuItem_Click;
+            // 
+            // serverPropertiesToolStripMenuItem
+            // 
+            serverPropertiesToolStripMenuItem.Name = "serverPropertiesToolStripMenuItem";
+            serverPropertiesToolStripMenuItem.Size = new Size(186, 22);
+            serverPropertiesToolStripMenuItem.Text = "Server Properties";
+            serverPropertiesToolStripMenuItem.Click += serverPropertiesToolStripMenuItem_Click;
+            // 
+            // editRamToolStripMenuItem
+            // 
+            editRamToolStripMenuItem.Name = "editRamToolStripMenuItem";
+            editRamToolStripMenuItem.Size = new Size(186, 22);
+            editRamToolStripMenuItem.Text = "Edit RAM";
+            editRamToolStripMenuItem.Click += serverEditRamToolStripMenuItem_Click;
             // 
             // backupWorldToolStripMenuItem
             // 
             backupWorldToolStripMenuItem.Name = "backupWorldToolStripMenuItem";
-            backupWorldToolStripMenuItem.Size = new Size(195, 22);
-            backupWorldToolStripMenuItem.Text = "Backup world...";
+            backupWorldToolStripMenuItem.Size = new Size(186, 22);
+            backupWorldToolStripMenuItem.Text = "Backup world";
             backupWorldToolStripMenuItem.Click += backupWorldToolStripMenuItem_Click;
             // 
             // backupServerToolStripMenuItem
             // 
             backupServerToolStripMenuItem.Name = "backupServerToolStripMenuItem";
-            backupServerToolStripMenuItem.Size = new Size(195, 22);
-            backupServerToolStripMenuItem.Text = "Backup server...";
+            backupServerToolStripMenuItem.Size = new Size(186, 22);
+            backupServerToolStripMenuItem.Text = "Backup server";
             backupServerToolStripMenuItem.Click += backupServerToolStripMenuItem_Click;
             // 
             // editToolStripMenuItem
@@ -297,6 +306,7 @@ namespace MC_Server_Manager_3
             labelPlayersTitle.Size = new Size(47, 15);
             labelPlayersTitle.TabIndex = 6;
             labelPlayersTitle.Text = "Players:";
+            labelPlayersTitle.Visible = false;
             // 
             // listBoxPlayers
             // 
@@ -305,6 +315,7 @@ namespace MC_Server_Manager_3
             listBoxPlayers.Name = "listBoxPlayers";
             listBoxPlayers.Size = new Size(200, 139);
             listBoxPlayers.TabIndex = 7;
+            listBoxPlayers.Visible = false;
             // 
             // label2
             // 
@@ -314,6 +325,7 @@ namespace MC_Server_Manager_3
             label2.Size = new Size(416, 15);
             label2.TabIndex = 7;
             label2.Text = "InDev version - may contiains bugs, errors and unfinished or missing features.\r\n";
+            label2.Visible = false;
             label2.Click += label2_Click;
             // 
             // btnDeleteServer
@@ -321,7 +333,7 @@ namespace MC_Server_Manager_3
             btnDeleteServer.Location = new Point(761, 37);
             btnDeleteServer.Name = "btnDeleteServer";
             btnDeleteServer.Size = new Size(90, 30);
-            btnDeleteServer.TabIndex = 6;
+            btnDeleteServer.TabIndex = 7;
             btnDeleteServer.Text = "Delete";
             btnDeleteServer.UseVisualStyleBackColor = true;
             btnDeleteServer.Click += btnDeleteServer_Click;
@@ -331,7 +343,7 @@ namespace MC_Server_Manager_3
             btnEditProperties.Location = new Point(857, 36);
             btnEditProperties.Name = "btnEditProperties";
             btnEditProperties.Size = new Size(110, 30);
-            btnEditProperties.TabIndex = 7;
+            btnEditProperties.TabIndex = 8;
             btnEditProperties.Text = "Edit Properties";
             btnEditProperties.UseVisualStyleBackColor = true;
             btnEditProperties.Click += btnEditProperties_Click;
@@ -350,9 +362,10 @@ namespace MC_Server_Manager_3
             Controls.Add(btnDeleteServer);
             Controls.Add(btnEditProperties);
             Controls.Add(groupBoxInfo);
+            Icon = (Icon)resources.GetObject("$this.Icon");
             MainMenuStrip = menuStrip1;
             Name = "Form1";
-            Text = "Minecraft Server Manager 3.0-alpha3";
+            Text = "Minecraft Server Manager 3";
             Load += Form1_Load;
             menuStrip1.ResumeLayout(false);
             menuStrip1.PerformLayout();
@@ -379,6 +392,7 @@ namespace MC_Server_Manager_3
         private ToolStripMenuItem helpToolStripMenuItem;
         private ToolStripMenuItem aboutToolStripMenuItem;
         private ToolStripMenuItem serverPropertiesToolStripMenuItem;
+        private ToolStripMenuItem editRamToolStripMenuItem;
 
         private GroupBox groupBoxInfo;
         private Label lblStatusTitle;
