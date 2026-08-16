@@ -2,7 +2,7 @@
 # MC Server Manager 3
 
 A lightweight Windows desktop manager for running and managing local Minecraft server instances. The application is a Windows Forms app written in C# and targets .NET 10.
-![screenshot](https://github.com/JaatrovyKnedlicek/MC-Server-Manager-Windows/blob/main/Sn%C3%ADmka%20obrazovky%202026-08-13%20025506.png?raw=true)
+![screenshot](https://github.com/JaatrovyKnedlicek/MC-Server-Manager-Windows/blob/main/Sn%C3%ADmka%20obrazovky%202026-08-16%20153539.png?raw=true)
 
 ## Features
 
