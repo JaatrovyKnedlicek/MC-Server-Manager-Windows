@@ -12,7 +12,7 @@ A lightweight Windows desktop manager for running and managing local Minecraft s
 
 ## Prerequisites
 
-- Windows 7 or higher (Windows 10 recommended)
+- Windows 7 or higher (Windows 10+ recommended)
 - .NET 10 runtime/SDK for framework dependant version
 
 ## Instalation
