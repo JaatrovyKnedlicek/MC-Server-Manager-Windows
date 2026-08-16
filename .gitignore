@@ -1,6 +1,12 @@
 # Build artifacts
 bin/
+**/bin/
 obj/
+**/obj/
+
+# Publish output
+publish/
+**/publish/
 
 # Visual Studio
 .vs/
@@ -43,6 +49,12 @@ paper-versions.json
 
 # User-specific project files
 *.csproj.user
+
+# Executables and debug files
+*.exe
+*.dll
+*.pdb
+*.runtimeconfig.json
 
 # Ignore generated index files
 .vs/**/*
