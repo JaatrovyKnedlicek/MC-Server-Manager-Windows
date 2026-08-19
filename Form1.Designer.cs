@@ -24,6 +24,7 @@ namespace MC_Server_Manager_3
             editRamToolStripMenuItem = new ToolStripMenuItem();
             backupWorldToolStripMenuItem = new ToolStripMenuItem();
             backupServerToolStripMenuItem = new ToolStripMenuItem();
+            killServerToolStripMenuItem = new ToolStripMenuItem();
             editToolStripMenuItem = new ToolStripMenuItem();
             viewToolStripMenuItem = new ToolStripMenuItem();
             statusBarToolStripMenuItem = new ToolStripMenuItem();
@@ -83,7 +84,7 @@ namespace MC_Server_Manager_3
             // 
             // toolsToolStripMenuItem
             // 
-            toolsToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { openPluginsFolderToolStripMenuItem, openRouterSettingsToolStripMenuItem, serverPropertiesToolStripMenuItem, editRamToolStripMenuItem, backupWorldToolStripMenuItem, backupServerToolStripMenuItem });
+            toolsToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { openPluginsFolderToolStripMenuItem, openRouterSettingsToolStripMenuItem, serverPropertiesToolStripMenuItem, editRamToolStripMenuItem, backupWorldToolStripMenuItem, backupServerToolStripMenuItem, killServerToolStripMenuItem });
             toolsToolStripMenuItem.Name = "toolsToolStripMenuItem";
             toolsToolStripMenuItem.Size = new Size(47, 20);
             toolsToolStripMenuItem.Text = "Tools";
@@ -113,7 +114,7 @@ namespace MC_Server_Manager_3
             // 
             editRamToolStripMenuItem.Name = "editRamToolStripMenuItem";
             editRamToolStripMenuItem.Size = new Size(186, 22);
-            editRamToolStripMenuItem.Text = "Edit RAM";
+            editRamToolStripMenuItem.Text = "RAM Usage Settings";
             editRamToolStripMenuItem.Click += serverEditRamToolStripMenuItem_Click;
             // 
             // backupWorldToolStripMenuItem
@@ -129,6 +130,13 @@ namespace MC_Server_Manager_3
             backupServerToolStripMenuItem.Size = new Size(186, 22);
             backupServerToolStripMenuItem.Text = "Backup server";
             backupServerToolStripMenuItem.Click += backupServerToolStripMenuItem_Click;
+            // 
+            // killServerToolStripMenuItem
+            // 
+            killServerToolStripMenuItem.Name = "killServerToolStripMenuItem";
+            killServerToolStripMenuItem.Size = new Size(186, 22);
+            killServerToolStripMenuItem.Text = "Kill Server Process";
+            killServerToolStripMenuItem.Click += killServerToolStripMenuItem_Click;
             // 
             // editToolStripMenuItem
             // 
@@ -149,7 +157,7 @@ namespace MC_Server_Manager_3
             statusBarToolStripMenuItem.CheckOnClick = true;
             statusBarToolStripMenuItem.CheckState = CheckState.Checked;
             statusBarToolStripMenuItem.Name = "statusBarToolStripMenuItem";
-            statusBarToolStripMenuItem.Size = new Size(126, 22);
+            statusBarToolStripMenuItem.Size = new Size(180, 22);
             statusBarToolStripMenuItem.Text = "Status Bar";
             statusBarToolStripMenuItem.Click += statusBarToolStripMenuItem_Click;
             // 
@@ -163,7 +171,7 @@ namespace MC_Server_Manager_3
             // aboutToolStripMenuItem
             // 
             aboutToolStripMenuItem.Name = "aboutToolStripMenuItem";
-            aboutToolStripMenuItem.Size = new Size(107, 22);
+            aboutToolStripMenuItem.Size = new Size(180, 22);
             aboutToolStripMenuItem.Text = "About";
             aboutToolStripMenuItem.Click += aboutToolStripMenuItem_Click;
             // 
@@ -413,5 +421,6 @@ namespace MC_Server_Manager_3
         private ToolStripMenuItem openRouterSettingsToolStripMenuItem;
         private ToolStripMenuItem backupWorldToolStripMenuItem;
         private ToolStripMenuItem backupServerToolStripMenuItem;
+        private ToolStripMenuItem killServerToolStripMenuItem;
     }
 }

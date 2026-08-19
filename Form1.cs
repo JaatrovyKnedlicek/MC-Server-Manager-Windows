@@ -43,6 +43,9 @@ namespace MC_Server_Manager_3
         private CancellationTokenSource? consoleInputCts;
         private Task? consoleInputTask;
 
+        // Server process watcher timer
+        private System.Windows.Forms.Timer? processWatcherTimer;
+
         // servers storage
         private readonly List<ServerInfo> servers = new List<ServerInfo>();
         private int SelectedIndex => listBoxServers.SelectedIndex;
@@ -74,6 +77,19 @@ namespace MC_Server_Manager_3
             var s = servers[SelectedIndex];
             if (string.IsNullOrEmpty(s.FolderPath) || !Directory.Exists(s.FolderPath)) { MessageBox.Show("Server folder not found.", "Backup world", MessageBoxButtons.OK, MessageBoxIcon.Error); return; }
 
+            // Show backup warning if not disabled
+            if (!AppSettings.NeverShowBackupWarningAgain)
+            {
+                using var dlg = new BackupWarningDialog();
+                dlg.ShowDialog(this);
+
+                // Update the setting if user checked "never show again"
+                if (dlg.NeverShowAgain)
+                {
+                    AppSettings.NeverShowBackupWarningAgain = true;
+                }
+            }
+
             using var sfd = new SaveFileDialog() { Filter = "Zip Archive|*.zip", FileName = MakeSafeFileNameForZip(s.Name + "-world.zip") };
             if (sfd.ShowDialog(this) != DialogResult.OK) return;
 
@@ -87,11 +103,11 @@ namespace MC_Server_Manager_3
             }
 
             var cts = new CancellationTokenSource();
-            using var dlg = new ProgressDialog(cts, "Creating world backup...");
-            var progress = new Progress<int>(pct => dlg.SetProgress(pct));
+            using var dlg2 = new ProgressDialog(cts, "Creating world backup...");
+            var progress = new Progress<int>(pct => dlg2.SetProgress(pct));
             try
             {
-                dlg.Show(this);
+                dlg2.Show(this);
                 await Task.Run(() => CreateZipFromDirectories(s.FolderPath, dirs, sfd.FileName, progress, cts.Token));
                 MessageBox.Show("World backup completed.", "Backup world", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
@@ -105,7 +121,7 @@ namespace MC_Server_Manager_3
             }
             finally
             {
-                if (dlg.Visible) dlg.Close();
+                if (dlg2.Visible) dlg2.Close();
             }
         }
 
@@ -116,15 +132,28 @@ namespace MC_Server_Manager_3
             var s = servers[SelectedIndex];
             if (string.IsNullOrEmpty(s.FolderPath) || !Directory.Exists(s.FolderPath)) { MessageBox.Show("Server folder not found.", "Backup server", MessageBoxButtons.OK, MessageBoxIcon.Error); return; }
 
+            // Show backup warning if not disabled
+            if (!AppSettings.NeverShowBackupWarningAgain)
+            {
+                using var dlg = new BackupWarningDialog();
+                dlg.ShowDialog(this);
+
+                // Update the setting if user checked "never show again"
+                if (dlg.NeverShowAgain)
+                {
+                    AppSettings.NeverShowBackupWarningAgain = true;
+                }
+            }
+
             using var sfd = new SaveFileDialog() { Filter = "Zip Archive|*.zip", FileName = MakeSafeFileNameForZip(s.Name + "-server.zip") };
             if (sfd.ShowDialog(this) != DialogResult.OK) return;
 
             var cts = new CancellationTokenSource();
-            using var dlg = new ProgressDialog(cts, "Creating server backup...");
-            var progress = new Progress<int>(pct => dlg.SetProgress(pct));
+            using var dlg2 = new ProgressDialog(cts, "Creating server backup...");
+            var progress = new Progress<int>(pct => dlg2.SetProgress(pct));
             try
             {
-                dlg.Show(this);
+                dlg2.Show(this);
                 // include all files under server folder
                 await Task.Run(() => CreateZipFromDirectories(s.FolderPath, new List<string> { s.FolderPath }, sfd.FileName, progress, cts.Token));
                 MessageBox.Show("Server backup completed.", "Backup server", MessageBoxButtons.OK, MessageBoxIcon.Information);
@@ -139,7 +168,7 @@ namespace MC_Server_Manager_3
             }
             finally
             {
-                if (dlg.Visible) dlg.Close();
+                if (dlg2.Visible) dlg2.Close();
             }
         }
 
@@ -238,6 +267,9 @@ namespace MC_Server_Manager_3
 
             // load saved servers from disk (if any)
             LoadServersFromDisk();
+
+            // Start the process watcher timer
+            InitializeProcessWatcher();
 
             // (Stop and Console buttons removed from UI)
 
@@ -364,15 +396,25 @@ namespace MC_Server_Manager_3
             lblIPValue.Text = $"IP LAN: {lan}\r\nIP: ...";
             _ = FetchAndSetPublicIpAsync(lan);
 
-            // Always show "Stopped" for now; do not display "Running"
-            lblStatusValue.Text = "Stopped";
+            // Show Running or Stopped based on server state and process
+            if (s.Running && s.ProcessInstance != null && !s.ProcessInstance.HasExited)
+            {
+                lblStatusValue.Text = "Running";
+                // Disable Start button when server is running
+                btnStartServer.Enabled = false;
+            }
+            else
+            {
+                lblStatusValue.Text = "Stopped";
+                s.Running = false; // ensure Running flag matches reality
+                // Enable Start button when server is stopped
+                btnStartServer.Enabled = true;
+            }
 
             listBoxPlayers.Items.Clear();
             foreach (var p in s.Players)
                 listBoxPlayers.Items.Add(p);
 
-            // Always allow Start when a server is selected.
-            btnStartServer.Enabled = true;
             if (btnDeleteServer != null) btnDeleteServer.Enabled = true;
             if (btnEditProperties != null) btnEditProperties.Enabled = true;
         }
@@ -610,17 +652,24 @@ namespace MC_Server_Manager_3
 
         protected override void OnFormClosing(FormClosingEventArgs e)
         {
-            // Attempt to stop any tracked processes (best-effort).
-            foreach (var s in servers.ToList())
+            // Check if any servers are still running
+            var runningServers = servers.Where(s => s.Running && s.ProcessInstance != null && !s.ProcessInstance.HasExited).ToList();
+
+            if (runningServers.Count > 0)
             {
-                try
+                // If the user has never disabled the warning, show it
+                if (!AppSettings.NeverShowStopWarningAgain)
                 {
-                    if (s.ProcessInstance != null && !s.ProcessInstance.HasExited)
+                    using var dlg = new StopWarningDialog();
+                    dlg.ShowDialog(this);
+
+                    // Update the setting if user checked "never show again"
+                    if (dlg.NeverShowAgain)
                     {
-                        try { s.ProcessInstance.Kill(true); } catch { }
+                        AppSettings.NeverShowStopWarningAgain = true;
                     }
                 }
-                catch { }
+                // Always allow closing - servers will continue running unaffected
             }
 
             if (consoleAllocated)
@@ -753,7 +802,7 @@ namespace MC_Server_Manager_3
             MessageBox.Show("Toggle Status Bar - not implemented yet.", "View", MessageBoxButtons.OK, MessageBoxIcon.Information);
 
         private void aboutToolStripMenuItem_Click(object sender, EventArgs e) =>
-            MessageBox.Show("Minecraft Server Manager 3\nVersion: 3.0.0\n© Ján Repka 2026", "About", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            MessageBox.Show("Minecraft Server Manager 3\nVersion: 3.0.1\n© Ján Repka 2026", "About", MessageBoxButtons.OK, MessageBoxIcon.Information);
 
         private void label1_Click(object sender, EventArgs e) { }
 
@@ -976,6 +1025,9 @@ namespace MC_Server_Manager_3
                                         var cfg = new ServerConfig { Name = s.Name, Version = s.Version, Port = s.Port, RamMB = s.RamMB, PropertiesFileName = string.IsNullOrEmpty(s.PropertiesPath) ? string.Empty : Path.GetFileName(s.PropertiesPath), EulaAccepted = s.EulaAccepted };
                                         var configJson = JsonSerializer.Serialize(cfg, new JsonSerializerOptions { WriteIndented = true });
                                         File.WriteAllText(Path.Combine(s.FolderPath, "config.json"), configJson);
+
+                                        // Update start.cmd with new RAM values
+                                        UpdateStartCmdRamValues(s.FolderPath, s.RamMB);
                                     }
                                 }
                                 catch { }
@@ -1024,6 +1076,45 @@ namespace MC_Server_Manager_3
             }
         }
 
+        // Kill server process from Tools menu
+        private void killServerToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            if (SelectedIndex < 0)
+            {
+                MessageBox.Show("Select a server first.", "Kill Server", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            var s = servers[SelectedIndex];
+
+            if (!s.Running || s.ProcessInstance == null)
+            {
+                MessageBox.Show("Server is not running or not tracked by the manager.", "Kill Server", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            var confirm = MessageBox.Show($"Force kill server '{s.Name}'? This will forcefully terminate the process.", "Kill Server", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
+            if (confirm != DialogResult.Yes)
+                return;
+
+            try
+            {
+                var proc = s.ProcessInstance;
+                if (!proc.HasExited)
+                {
+                    proc.Kill(true);
+                    proc.WaitForExit(3000);
+                    s.Running = false;
+                    LoadSelectedServerInfo();
+                    MessageBox.Show("Server process killed.", "Kill Server", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Failed to kill server process: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
         // Attempt to find the first IPv4 default gateway on active interfaces
         private string? GetDefaultGateway()
         {
@@ -1046,9 +1137,96 @@ namespace MC_Server_Manager_3
             return null;
         }
 
+        /// <summary>
+        /// Updates the start.cmd file with new RAM values (Xms and Xmx)
+        /// </summary>
+        private void UpdateStartCmdRamValues(string serverFolderPath, int ramMB)
+        {
+            try
+            {
+                var startCmdPath = Path.Combine(serverFolderPath, "start.cmd");
+                if (!File.Exists(startCmdPath))
+                    return;
+
+                // Read the current start.cmd content
+                var content = File.ReadAllText(startCmdPath);
+
+                // Convert RAM MB to appropriate format (G for GB, M for MB)
+                string ramArg = (ramMB % 1024 == 0) ? $"{ramMB / 1024}G" : $"{ramMB}M";
+
+                // Replace -Xms and -Xmx values using regex
+                // Pattern: -Xms<number>[GM] and -Xmx<number>[GM]
+                content = System.Text.RegularExpressions.Regex.Replace(content, @"-Xms\d+[GM]", $"-Xms{ramArg}");
+                content = System.Text.RegularExpressions.Regex.Replace(content, @"-Xmx\d+[GM]", $"-Xmx{ramArg}");
+
+                // Write the updated content back
+                File.WriteAllText(startCmdPath, content);
+            }
+            catch
+            {
+                // Silently ignore errors updating start.cmd
+            }
+        }
+
         private void Form1_Load(object sender, EventArgs e)
         {
 
+        }
+
+        /// <summary>
+        /// Initialize and start the background process watcher timer
+        /// </summary>
+        private void InitializeProcessWatcher()
+        {
+            processWatcherTimer = new System.Windows.Forms.Timer();
+            processWatcherTimer.Interval = 1000; // Check every 1 second
+            processWatcherTimer.Tick += ProcessWatcherTimer_Tick;
+            processWatcherTimer.Start();
+        }
+
+        /// <summary>
+        /// Timer tick handler that monitors running server processes
+        /// </summary>
+        private void ProcessWatcherTimer_Tick(object? sender, EventArgs e)
+        {
+            try
+            {
+                // Only update if a server is actually selected
+                if (SelectedIndex < 0 || SelectedIndex >= servers.Count)
+                    return;
+
+                var currentServer = servers[SelectedIndex];
+
+                // Check if the tracked process is still alive
+                if (currentServer.Running && currentServer.ProcessInstance != null)
+                {
+                    if (currentServer.ProcessInstance.HasExited)
+                    {
+                        // Process has exited, update the running state
+                        currentServer.Running = false;
+                        currentServer.ProcessInstance = null;
+
+                        // Update the UI to show Stopped and enable Start button
+                        if (lblStatusValue.InvokeRequired)
+                        {
+                            lblStatusValue.Invoke(() =>
+                            {
+                                lblStatusValue.Text = "Stopped";
+                                btnStartServer.Enabled = true;
+                            });
+                        }
+                        else
+                        {
+                            lblStatusValue.Text = "Stopped";
+                            btnStartServer.Enabled = true;
+                        }
+                    }
+                }
+            }
+            catch
+            {
+                // Silently ignore any errors in the watcher
+            }
         }
     }
 }
