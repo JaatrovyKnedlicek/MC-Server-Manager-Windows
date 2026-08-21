@@ -335,20 +335,8 @@ namespace MC_Server_Manager_3
                         var props = Path.Combine(dir, "server.properties");
                         if (File.Exists(props))
                         {
-                            try
-                            {
-                                foreach (var line in File.ReadAllLines(props))
-                                {
-                                    var trimmed = line.Trim();
-                                    if (trimmed.StartsWith("server-port="))
-                                    {
-                                        var parts = trimmed.Split('=', 2);
-                                        if (parts.Length == 2 && int.TryParse(parts[1].Trim(), out var p))
-                                            fallback = fallback with { Port = p };
-                                    }
-                                }
-                            }
-                            catch { /* ignore */ }
+                            if (TryReadPortFromProperties(props, out var p))
+                                fallback = fallback with { Port = p };
                             fallback.PropertiesPath = props;
                         }
 
@@ -447,6 +435,8 @@ namespace MC_Server_Manager_3
                 MessageBox.Show("Server folder not found.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
             }
+
+            s = SyncPortFromProperties(s);
 
             var startCmdPath = Path.Combine(s.FolderPath, "start.cmd");
             Process? launched = null;
@@ -1326,6 +1316,57 @@ namespace MC_Server_Manager_3
             s.PostShutdownScriptType = dlg.ScriptType;
             s.PostShutdownScriptFile = dlg.ScriptFileName;
             try { SaveServerConfig(s); } catch { }
+        }
+
+        private ServerInfo SyncPortFromProperties(ServerInfo s)
+        {
+            var propsPath = s.PropertiesPath;
+            if (string.IsNullOrEmpty(propsPath) || !File.Exists(propsPath))
+            {
+                if (string.IsNullOrEmpty(s.FolderPath))
+                    return s;
+                propsPath = Path.Combine(s.FolderPath, "server.properties");
+            }
+
+            if (!File.Exists(propsPath) || !TryReadPortFromProperties(propsPath, out var port) || port == s.Port)
+                return s;
+
+            var updated = s with { Port = port };
+            for (int i = 0; i < servers.Count; i++)
+            {
+                if (ReferenceEquals(servers[i], s))
+                {
+                    servers[i] = updated;
+                    break;
+                }
+            }
+
+            try { SaveServerConfig(updated); } catch { }
+            return updated;
+        }
+
+        private static bool TryReadPortFromProperties(string propertiesPath, out int port)
+        {
+            port = 0;
+            try
+            {
+                foreach (var line in File.ReadAllLines(propertiesPath))
+                {
+                    var trimmed = line.Trim();
+                    if (trimmed.StartsWith('#') || !trimmed.StartsWith("server-port="))
+                        continue;
+
+                    var value = trimmed.Substring("server-port=".Length).Trim();
+                    if (int.TryParse(value, out port) && port is > 0 and <= 65535)
+                        return true;
+                }
+            }
+            catch
+            {
+                // ignore unreadable properties files
+            }
+
+            return false;
         }
 
         private void SaveServerConfig(ServerInfo s)
