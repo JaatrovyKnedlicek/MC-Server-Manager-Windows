@@ -18,12 +18,15 @@ namespace MC_Server_Manager_3
             newToolStripMenuItem = new ToolStripMenuItem();
             exitToolStripMenuItem = new ToolStripMenuItem();
             toolsToolStripMenuItem = new ToolStripMenuItem();
+            openServerFolderToolStripMenuItem = new ToolStripMenuItem();
             openPluginsFolderToolStripMenuItem = new ToolStripMenuItem();
+            cleanLogsFolderToolStripMenuItem = new ToolStripMenuItem();
             openRouterSettingsToolStripMenuItem = new ToolStripMenuItem();
             serverPropertiesToolStripMenuItem = new ToolStripMenuItem();
             editRamToolStripMenuItem = new ToolStripMenuItem();
             backupWorldToolStripMenuItem = new ToolStripMenuItem();
             backupServerToolStripMenuItem = new ToolStripMenuItem();
+            postShutdownActionsToolStripMenuItem = new ToolStripMenuItem();
             killServerToolStripMenuItem = new ToolStripMenuItem();
             editToolStripMenuItem = new ToolStripMenuItem();
             viewToolStripMenuItem = new ToolStripMenuItem();
@@ -84,10 +87,17 @@ namespace MC_Server_Manager_3
             // 
             // toolsToolStripMenuItem
             // 
-            toolsToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { openPluginsFolderToolStripMenuItem, openRouterSettingsToolStripMenuItem, serverPropertiesToolStripMenuItem, editRamToolStripMenuItem, backupWorldToolStripMenuItem, backupServerToolStripMenuItem, killServerToolStripMenuItem });
+            toolsToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { openServerFolderToolStripMenuItem, openPluginsFolderToolStripMenuItem, cleanLogsFolderToolStripMenuItem, openRouterSettingsToolStripMenuItem, serverPropertiesToolStripMenuItem, editRamToolStripMenuItem, backupWorldToolStripMenuItem, backupServerToolStripMenuItem, postShutdownActionsToolStripMenuItem, killServerToolStripMenuItem });
             toolsToolStripMenuItem.Name = "toolsToolStripMenuItem";
             toolsToolStripMenuItem.Size = new Size(47, 20);
             toolsToolStripMenuItem.Text = "Tools";
+            // 
+            // openServerFolderToolStripMenuItem
+            // 
+            openServerFolderToolStripMenuItem.Name = "openServerFolderToolStripMenuItem";
+            openServerFolderToolStripMenuItem.Size = new Size(186, 22);
+            openServerFolderToolStripMenuItem.Text = "Open Server Folder";
+            openServerFolderToolStripMenuItem.Click += openServerFolderToolStripMenuItem_Click;
             // 
             // openPluginsFolderToolStripMenuItem
             // 
@@ -95,6 +105,13 @@ namespace MC_Server_Manager_3
             openPluginsFolderToolStripMenuItem.Size = new Size(186, 22);
             openPluginsFolderToolStripMenuItem.Text = "Open Plugins Folder";
             openPluginsFolderToolStripMenuItem.Click += openPluginsFolderToolStripMenuItem_Click;
+            // 
+            // cleanLogsFolderToolStripMenuItem
+            // 
+            cleanLogsFolderToolStripMenuItem.Name = "cleanLogsFolderToolStripMenuItem";
+            cleanLogsFolderToolStripMenuItem.Size = new Size(186, 22);
+            cleanLogsFolderToolStripMenuItem.Text = "Clean Logs Folder";
+            cleanLogsFolderToolStripMenuItem.Click += cleanLogsFolderToolStripMenuItem_Click;
             // 
             // openRouterSettingsToolStripMenuItem
             // 
@@ -130,6 +147,13 @@ namespace MC_Server_Manager_3
             backupServerToolStripMenuItem.Size = new Size(186, 22);
             backupServerToolStripMenuItem.Text = "Backup server";
             backupServerToolStripMenuItem.Click += backupServerToolStripMenuItem_Click;
+            // 
+            // postShutdownActionsToolStripMenuItem
+            // 
+            postShutdownActionsToolStripMenuItem.Name = "postShutdownActionsToolStripMenuItem";
+            postShutdownActionsToolStripMenuItem.Size = new Size(186, 22);
+            postShutdownActionsToolStripMenuItem.Text = "Post-Shutdown Actions";
+            postShutdownActionsToolStripMenuItem.Click += postShutdownActionsToolStripMenuItem_Click;
             // 
             // killServerToolStripMenuItem
             // 
@@ -417,10 +441,13 @@ namespace MC_Server_Manager_3
         private Button btnDeleteServer;
         private Button btnEditProperties;
         private ToolStripMenuItem toolsToolStripMenuItem;
+        private ToolStripMenuItem openServerFolderToolStripMenuItem;
         private ToolStripMenuItem openPluginsFolderToolStripMenuItem;
+        private ToolStripMenuItem cleanLogsFolderToolStripMenuItem;
         private ToolStripMenuItem openRouterSettingsToolStripMenuItem;
         private ToolStripMenuItem backupWorldToolStripMenuItem;
         private ToolStripMenuItem backupServerToolStripMenuItem;
+        private ToolStripMenuItem postShutdownActionsToolStripMenuItem;
         private ToolStripMenuItem killServerToolStripMenuItem;
     }
 }

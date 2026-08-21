@@ -65,6 +65,10 @@ namespace MC_Server_Manager_3
             // path on disk for this server instance (optional)
             public string FolderPath { get; set; } = string.Empty;
 
+            public bool PostShutdownEnabled { get; set; }
+            public string PostShutdownScriptType { get; set; } = "ps1";
+            public string PostShutdownScriptFile { get; set; } = string.Empty;
+
             // process instance when running (may be detached)
             [JsonIgnore]
             public Process? ProcessInstance { get; set; }
@@ -250,6 +254,9 @@ namespace MC_Server_Manager_3
             public int RamMB { get; set; }
             public string PropertiesFileName { get; set; } = string.Empty;
             public bool EulaAccepted { get; set; }
+            public bool PostShutdownEnabled { get; set; }
+            public string PostShutdownScriptType { get; set; } = "ps1";
+            public string PostShutdownScriptFile { get; set; } = string.Empty;
         }
 
         public Form1()
@@ -305,7 +312,10 @@ namespace MC_Server_Manager_3
                                     RamMB = cfg.RamMB,
                                     PropertiesPath = string.IsNullOrEmpty(cfg.PropertiesFileName) ? string.Empty : Path.Combine(dir, cfg.PropertiesFileName),
                                     EulaAccepted = cfg.EulaAccepted,
-                                    FolderPath = dir
+                                    FolderPath = dir,
+                                    PostShutdownEnabled = cfg.PostShutdownEnabled,
+                                    PostShutdownScriptType = string.IsNullOrEmpty(cfg.PostShutdownScriptType) ? "ps1" : cfg.PostShutdownScriptType,
+                                    PostShutdownScriptFile = cfg.PostShutdownScriptFile ?? string.Empty
                                 };
                                 servers.Add(si);
                                 continue;
@@ -315,7 +325,7 @@ namespace MC_Server_Manager_3
 
 
 
-                        // fallback: no config.json — infer from folder name
+                        // fallback: no config.json ? infer from folder name
                         var folderName = Path.GetFileName(dir);
                         var fallback = new ServerInfo(folderName, "127.0.0.1", 25565, "N/A")
                         {
@@ -557,10 +567,7 @@ namespace MC_Server_Manager_3
             }
             finally
             {
-                s.Running = false;
-                s.ProcessInstance = null;
-                s.Players.Clear();
-                LoadSelectedServerInfo();
+                HandleServerProcessExited(s);
             }
         }
 
@@ -802,7 +809,7 @@ namespace MC_Server_Manager_3
             MessageBox.Show("Toggle Status Bar - not implemented yet.", "View", MessageBoxButtons.OK, MessageBoxIcon.Information);
 
         private void aboutToolStripMenuItem_Click(object sender, EventArgs e) =>
-            MessageBox.Show("Minecraft Server Manager 3\nVersion: 3.0.1\n© Ján Repka 2026", "About", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            MessageBox.Show("Minecraft Server Manager 3\nVersion: 3.1\nÂ© JÃ¡n Repka 2026", "About", MessageBoxButtons.OK, MessageBoxIcon.Information);
 
         private void label1_Click(object sender, EventArgs e) { }
 
@@ -1020,15 +1027,9 @@ namespace MC_Server_Manager_3
                                 s.RamMB = dlg.SelectedRamMB;
                                 try
                                 {
+                                    SaveServerConfig(s);
                                     if (!string.IsNullOrEmpty(s.FolderPath) && Directory.Exists(s.FolderPath))
-                                    {
-                                        var cfg = new ServerConfig { Name = s.Name, Version = s.Version, Port = s.Port, RamMB = s.RamMB, PropertiesFileName = string.IsNullOrEmpty(s.PropertiesPath) ? string.Empty : Path.GetFileName(s.PropertiesPath), EulaAccepted = s.EulaAccepted };
-                                        var configJson = JsonSerializer.Serialize(cfg, new JsonSerializerOptions { WriteIndented = true });
-                                        File.WriteAllText(Path.Combine(s.FolderPath, "config.json"), configJson);
-
-                                        // Update start.cmd with new RAM values
                                         UpdateStartCmdRamValues(s.FolderPath, s.RamMB);
-                                    }
                                 }
                                 catch { }
 
@@ -1036,6 +1037,99 @@ namespace MC_Server_Manager_3
                                 LoadSelectedServerInfo();
                             }
                         }
+
+        private void openServerFolderToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            if (SelectedIndex < 0 || SelectedIndex >= servers.Count)
+            {
+                MessageBox.Show("Select a server first.", "Open Server Folder", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            var path = servers[SelectedIndex].FolderPath;
+            if (string.IsNullOrEmpty(path) || !Directory.Exists(path))
+            {
+                MessageBox.Show("Server folder not found.", "Open Server Folder", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+
+            try
+            {
+                Process.Start(new ProcessStartInfo { FileName = path, UseShellExecute = true });
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Failed to open folder: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private void cleanLogsFolderToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            if (SelectedIndex < 0 || SelectedIndex >= servers.Count)
+            {
+                MessageBox.Show("Select a server first.", "Clean Logs Folder", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            var s = servers[SelectedIndex];
+            if (string.IsNullOrEmpty(s.FolderPath) || !Directory.Exists(s.FolderPath))
+            {
+                MessageBox.Show("Server folder not found.", "Clean Logs Folder", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+
+            var logsPath = Path.Combine(s.FolderPath, "logs");
+            if (!Directory.Exists(logsPath))
+            {
+                MessageBox.Show("Logs folder not found.", "Clean Logs Folder", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            string[] gzLogs;
+            try
+            {
+                gzLogs = Directory.GetFiles(logsPath, "*.log.gz", SearchOption.TopDirectoryOnly);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Failed to read logs folder: {ex.Message}", "Clean Logs Folder", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+
+            if (gzLogs.Length == 0)
+            {
+                MessageBox.Show("No compressed log files (.log.gz) to delete.", "Clean Logs Folder", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            var confirm = MessageBox.Show(
+                $"Delete {gzLogs.Length} compressed log file(s) from '{s.Name}'?",
+                "Clean Logs Folder",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Question);
+            if (confirm != DialogResult.Yes)
+                return;
+
+            var deleted = 0;
+            var failed = 0;
+            foreach (var file in gzLogs)
+            {
+                try
+                {
+                    File.Delete(file);
+                    deleted++;
+                }
+                catch
+                {
+                    failed++;
+                }
+            }
+
+            if (failed == 0)
+                MessageBox.Show($"Deleted {deleted} log file(s).", "Clean Logs Folder", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            else
+                MessageBox.Show($"Deleted {deleted} log file(s). {failed} could not be deleted.", "Clean Logs Folder", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+        }
 
                         // Open plugins folder for selected server (or servers root if none selected)
                         private void openPluginsFolderToolStripMenuItem_Click(object sender, EventArgs e)
@@ -1104,8 +1198,7 @@ namespace MC_Server_Manager_3
                 {
                     proc.Kill(true);
                     proc.WaitForExit(3000);
-                    s.Running = false;
-                    LoadSelectedServerInfo();
+                    HandleServerProcessExited(s);
                     MessageBox.Show("Server process killed.", "Kill Server", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 }
             }
@@ -1191,35 +1284,16 @@ namespace MC_Server_Manager_3
         {
             try
             {
-                // Only update if a server is actually selected
-                if (SelectedIndex < 0 || SelectedIndex >= servers.Count)
-                    return;
-
-                var currentServer = servers[SelectedIndex];
-
-                // Check if the tracked process is still alive
-                if (currentServer.Running && currentServer.ProcessInstance != null)
+                foreach (var server in servers)
                 {
-                    if (currentServer.ProcessInstance.HasExited)
+                    try
                     {
-                        // Process has exited, update the running state
-                        currentServer.Running = false;
-                        currentServer.ProcessInstance = null;
-
-                        // Update the UI to show Stopped and enable Start button
-                        if (lblStatusValue.InvokeRequired)
-                        {
-                            lblStatusValue.Invoke(() =>
-                            {
-                                lblStatusValue.Text = "Stopped";
-                                btnStartServer.Enabled = true;
-                            });
-                        }
-                        else
-                        {
-                            lblStatusValue.Text = "Stopped";
-                            btnStartServer.Enabled = true;
-                        }
+                        if (server.Running && server.ProcessInstance != null && server.ProcessInstance.HasExited)
+                            HandleServerProcessExited(server);
+                    }
+                    catch
+                    {
+                        // ignore a single server watcher failure
                     }
                 }
             }
@@ -1227,6 +1301,151 @@ namespace MC_Server_Manager_3
             {
                 // Silently ignore any errors in the watcher
             }
+        }
+
+        private void postShutdownActionsToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            if (SelectedIndex < 0)
+            {
+                MessageBox.Show("Select a server first.", "Post-Shutdown Actions", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            var s = servers[SelectedIndex];
+            if (string.IsNullOrEmpty(s.FolderPath) || !Directory.Exists(s.FolderPath))
+            {
+                MessageBox.Show("Server folder not found.", "Post-Shutdown Actions", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+
+            using var dlg = new PostShutdownActionsForm(s.PostShutdownEnabled, s.PostShutdownScriptType, s.PostShutdownScriptFile, s.FolderPath);
+            if (dlg.ShowDialog(this) != DialogResult.OK)
+                return;
+
+            s.PostShutdownEnabled = dlg.ActionsEnabled;
+            s.PostShutdownScriptType = dlg.ScriptType;
+            s.PostShutdownScriptFile = dlg.ScriptFileName;
+            try { SaveServerConfig(s); } catch { }
+        }
+
+        private void SaveServerConfig(ServerInfo s)
+        {
+            if (string.IsNullOrEmpty(s.FolderPath) || !Directory.Exists(s.FolderPath))
+                return;
+
+            var cfg = new ServerConfig
+            {
+                Name = s.Name,
+                Version = s.Version,
+                Port = s.Port,
+                RamMB = s.RamMB,
+                PropertiesFileName = string.IsNullOrEmpty(s.PropertiesPath) ? string.Empty : Path.GetFileName(s.PropertiesPath),
+                EulaAccepted = s.EulaAccepted,
+                PostShutdownEnabled = s.PostShutdownEnabled,
+                PostShutdownScriptType = s.PostShutdownScriptType,
+                PostShutdownScriptFile = s.PostShutdownScriptFile
+            };
+            var configJson = JsonSerializer.Serialize(cfg, new JsonSerializerOptions { WriteIndented = true });
+            File.WriteAllText(Path.Combine(s.FolderPath, "config.json"), configJson);
+        }
+
+        private void HandleServerProcessExited(ServerInfo s)
+        {
+            var wasRunning = s.Running || s.ProcessInstance != null;
+            s.Running = false;
+            s.ProcessInstance = null;
+            s.Players.Clear();
+
+            if (wasRunning)
+                RunPostShutdownAction(s);
+
+            if (SelectedIndex >= 0 && SelectedIndex < servers.Count && ReferenceEquals(servers[SelectedIndex], s))
+                LoadSelectedServerInfo();
+        }
+
+        private void RunPostShutdownAction(ServerInfo s)
+        {
+            if (!s.PostShutdownEnabled)
+                return;
+            if (string.IsNullOrEmpty(s.FolderPath) || string.IsNullOrEmpty(s.PostShutdownScriptFile))
+                return;
+
+            var scriptPath = Path.IsPathRooted(s.PostShutdownScriptFile)
+                ? s.PostShutdownScriptFile
+                : Path.Combine(s.FolderPath, s.PostShutdownScriptFile);
+
+            if (!File.Exists(scriptPath))
+            {
+                MessageBox.Show($"Post-shutdown script was not found:\n{scriptPath}", "Post-Shutdown Actions", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            try
+            {
+                var type = (s.PostShutdownScriptType ?? "ps1").Trim().ToLowerInvariant();
+                ProcessStartInfo psi;
+                switch (type)
+                {
+                    case "ps1":
+                        psi = new ProcessStartInfo
+                        {
+                            FileName = "powershell.exe",
+                            Arguments = $"-NoProfile -ExecutionPolicy Bypass -File \"{scriptPath}\"",
+                            WorkingDirectory = s.FolderPath,
+                            UseShellExecute = true
+                        };
+                        break;
+                    case "py":
+                        if (!TryStartPython(scriptPath, s.FolderPath))
+                            Process.Start(new ProcessStartInfo
+                            {
+                                FileName = scriptPath,
+                                WorkingDirectory = s.FolderPath,
+                                UseShellExecute = true
+                            });
+                        return;
+                    default:
+                        psi = new ProcessStartInfo
+                        {
+                            FileName = scriptPath,
+                            WorkingDirectory = s.FolderPath,
+                            UseShellExecute = true
+                        };
+                        break;
+                }
+
+                Process.Start(psi);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Failed to run post-shutdown script: {ex.Message}", "Post-Shutdown Actions", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private static bool TryStartPython(string scriptPath, string workingDirectory)
+        {
+            foreach (var exe in new[] { "py", "python", "python3" })
+            {
+                try
+                {
+                    var args = exe == "py" ? $"-3 \"{scriptPath}\"" : $"\"{scriptPath}\"";
+                    var started = Process.Start(new ProcessStartInfo
+                    {
+                        FileName = exe,
+                        Arguments = args,
+                        WorkingDirectory = workingDirectory,
+                        UseShellExecute = true
+                    });
+                    if (started != null)
+                        return true;
+                }
+                catch
+                {
+                    // try the next interpreter name
+                }
+            }
+
+            return false;
         }
     }
 }
