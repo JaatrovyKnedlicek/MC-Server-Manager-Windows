@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Net;
 using System.Net.Http;
+using System.Net.Http.Json;
 using System.Net.Sockets;
 using System.Drawing;
 using System.IO;
@@ -492,6 +493,7 @@ namespace MC_Server_Manager_3
                     s.Running = true;
                     s.Players.Clear();
                     LoadSelectedServerInfo();
+                    _ = SendDiscordWebhookAsync(s, true);
                 }
                 else
                 {
@@ -1331,6 +1333,46 @@ namespace MC_Server_Manager_3
             }
         }
 
+        private void discordWebhookToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            using var dlg = new DiscordWebhookForm(AppSettings.DiscordWebhookEnabled, AppSettings.DiscordWebhookUri);
+            if (dlg.ShowDialog(this) != DialogResult.OK)
+                return;
+
+            AppSettings.DiscordWebhookEnabled = dlg.WebhookEnabled;
+            AppSettings.DiscordWebhookUri = dlg.WebhookUri;
+        }
+
+        private static async Task SendDiscordWebhookAsync(ServerInfo server, bool online)
+        {
+            if (!AppSettings.DiscordWebhookEnabled || string.IsNullOrWhiteSpace(AppSettings.DiscordWebhookUri))
+                return;
+
+            try
+            {
+                using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(10) };
+                var payload = new
+                {
+                    username = "MC Server Manager",
+                    embeds = new[]
+                    {
+                        new
+                        {
+                            title = $"{server.Name} is {(online ? "online" : "offline")}",
+                            description = online ? "The Minecraft server is now online." : "The Minecraft server is now offline.",
+                            color = online ? 5763719 : 15548997
+                        }
+                    }
+                };
+                using var response = await http.PostAsJsonAsync(AppSettings.DiscordWebhookUri, payload);
+                response.EnsureSuccessStatusCode();
+            }
+            catch
+            {
+                // Webhook failures must not affect server management.
+            }
+        }
+
         private void TryStartStatusWebsiteFromSettings()
         {
             if (!AppSettings.StatusWebsiteEnabled)
@@ -1580,7 +1622,10 @@ namespace MC_Server_Manager_3
             s.Players.Clear();
 
             if (wasRunning)
+            {
                 RunPostShutdownAction(s);
+                _ = SendDiscordWebhookAsync(s, false);
+            }
 
             if (SelectedIndex >= 0 && SelectedIndex < servers.Count && ReferenceEquals(servers[SelectedIndex], s))
                 LoadSelectedServerInfo();

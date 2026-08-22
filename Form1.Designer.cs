@@ -28,6 +28,7 @@ namespace MC_Server_Manager_3
             backupServerToolStripMenuItem = new ToolStripMenuItem();
             postShutdownActionsToolStripMenuItem = new ToolStripMenuItem();
             statusWebsiteToolStripMenuItem = new ToolStripMenuItem();
+            discordWebhookToolStripMenuItem = new ToolStripMenuItem();
             killServerToolStripMenuItem = new ToolStripMenuItem();
             editToolStripMenuItem = new ToolStripMenuItem();
             viewToolStripMenuItem = new ToolStripMenuItem();
@@ -55,9 +56,9 @@ namespace MC_Server_Manager_3
             menuStrip1.SuspendLayout();
             groupBoxInfo.SuspendLayout();
             SuspendLayout();
-            // 
+            //
             // menuStrip1
-            // 
+            //
             menuStrip1.Items.AddRange(new ToolStripItem[] { fileToolStripMenuItem, toolsToolStripMenuItem, editToolStripMenuItem, viewToolStripMenuItem, helpToolStripMenuItem });
             menuStrip1.Location = new Point(0, 0);
             menuStrip1.Name = "menuStrip1";
@@ -88,7 +89,7 @@ namespace MC_Server_Manager_3
             // 
             // toolsToolStripMenuItem
             // 
-            toolsToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { openServerFolderToolStripMenuItem, openPluginsFolderToolStripMenuItem, cleanLogsFolderToolStripMenuItem, openRouterSettingsToolStripMenuItem, serverPropertiesToolStripMenuItem, editRamToolStripMenuItem, backupWorldToolStripMenuItem, backupServerToolStripMenuItem, postShutdownActionsToolStripMenuItem, statusWebsiteToolStripMenuItem, killServerToolStripMenuItem });
+            toolsToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { openServerFolderToolStripMenuItem, openPluginsFolderToolStripMenuItem, cleanLogsFolderToolStripMenuItem, openRouterSettingsToolStripMenuItem, serverPropertiesToolStripMenuItem, editRamToolStripMenuItem, backupWorldToolStripMenuItem, backupServerToolStripMenuItem, postShutdownActionsToolStripMenuItem, statusWebsiteToolStripMenuItem, discordWebhookToolStripMenuItem, killServerToolStripMenuItem });
             toolsToolStripMenuItem.Name = "toolsToolStripMenuItem";
             toolsToolStripMenuItem.Size = new Size(47, 20);
             toolsToolStripMenuItem.Text = "Tools";
@@ -162,7 +163,14 @@ namespace MC_Server_Manager_3
             statusWebsiteToolStripMenuItem.Size = new Size(186, 22);
             statusWebsiteToolStripMenuItem.Text = "Status Website";
             statusWebsiteToolStripMenuItem.Click += statusWebsiteToolStripMenuItem_Click;
+            //
+            // discordWebhookToolStripMenuItem
             // 
+            discordWebhookToolStripMenuItem.Name = "discordWebhookToolStripMenuItem";
+            discordWebhookToolStripMenuItem.Size = new Size(186, 22);
+            discordWebhookToolStripMenuItem.Text = "Discord Webhook Status";
+            discordWebhookToolStripMenuItem.Click += discordWebhookToolStripMenuItem_Click;
+            //
             // killServerToolStripMenuItem
             // 
             killServerToolStripMenuItem.Name = "killServerToolStripMenuItem";
@@ -457,6 +465,7 @@ namespace MC_Server_Manager_3
         private ToolStripMenuItem backupServerToolStripMenuItem;
         private ToolStripMenuItem postShutdownActionsToolStripMenuItem;
         private ToolStripMenuItem statusWebsiteToolStripMenuItem;
+        private ToolStripMenuItem discordWebhookToolStripMenuItem;
         private ToolStripMenuItem killServerToolStripMenuItem;
     }
 }

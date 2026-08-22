@@ -23,6 +23,8 @@ namespace MC_Server_Manager_3
             public bool NeverShowBackupWarningAgain { get; set; } = false;
             public bool StatusWebsiteEnabled { get; set; } = false;
             public int StatusWebsitePort { get; set; } = 8080;
+            public bool DiscordWebhookEnabled { get; set; } = false;
+            public string DiscordWebhookUri { get; set; } = string.Empty;
         }
 
         /// <summary>
@@ -75,6 +77,28 @@ namespace MC_Server_Manager_3
             {
                 var data = GetSetting();
                 data.StatusWebsitePort = value is > 0 and <= 65535 ? value : 8080;
+                SaveSetting(data);
+            }
+        }
+
+        public static bool DiscordWebhookEnabled
+        {
+            get => GetSetting().DiscordWebhookEnabled;
+            set
+            {
+                var data = GetSetting();
+                data.DiscordWebhookEnabled = value;
+                SaveSetting(data);
+            }
+        }
+
+        public static string DiscordWebhookUri
+        {
+            get => GetSetting().DiscordWebhookUri;
+            set
+            {
+                var data = GetSetting();
+                data.DiscordWebhookUri = value ?? string.Empty;
                 SaveSetting(data);
             }
         }
