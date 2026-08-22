@@ -5,21 +5,44 @@ namespace MC_Server_Manager_3
 {
     public class StatusWebsiteForm : Form
     {
-        private static readonly int[] DefaultPorts = { 80, 8000, 8080, 8081, 8888, 3000, 5000 };
+        private readonly record struct PortPreset(int Port, string Label)
+        {
+            public override string ToString() => Label;
+        }
 
+        private static readonly PortPreset[] DefaultPorts =
+        {
+            new(80, "80 — HTTP (may require administrator)"),
+            new(8000, "8000 — Common development HTTP"),
+            new(8080, "8080 — Alternate HTTP"),
+            new(8081, "8081 — Alternate HTTP"),
+            new(8888, "8888 — Alternate HTTP"),
+            new(3000, "3000 — Node.js / frontend apps"),
+            new(5000, "5000 — Flask / ASP.NET development")
+        };
+
+        private readonly string _lanIp;
+        private readonly string _publicIp;
         private readonly CheckBox chkEnabled;
-        private readonly ComboBox cmbPort;
+        private readonly NumericUpDown numPort;
+        private readonly ComboBox cmbPresets;
+        private readonly Label lblLan;
+        private readonly Label lblPublic;
         private readonly Button btnOk;
         private readonly Button btnCancel;
+        private bool _updatingPort;
 
         public bool WebsiteEnabled { get; private set; }
         public int Port { get; private set; }
 
-        public StatusWebsiteForm(bool enabled, int port)
+        public StatusWebsiteForm(bool enabled, int port, string lanIp, string publicIp)
         {
+            _lanIp = string.IsNullOrWhiteSpace(lanIp) || lanIp == "..." ? "N/A" : lanIp;
+            _publicIp = string.IsNullOrWhiteSpace(publicIp) || publicIp == "..." ? "N/A" : publicIp;
+
             Text = "Status Website";
-            Width = 420;
-            Height = 200;
+            Width = 500;
+            Height = 260;
             FormBorderStyle = FormBorderStyle.FixedDialog;
             MaximizeBox = false;
             MinimizeBox = false;
@@ -31,82 +54,121 @@ namespace MC_Server_Manager_3
                 Text = "Enable status website",
                 Left = 16,
                 Top = 16,
-                Width = 370,
+                Width = 450,
                 Checked = enabled
             };
 
             var lblPort = new Label { Text = "Port:", Left = 16, Top = 54, Width = 40 };
-            cmbPort = new ComboBox
+            numPort = new NumericUpDown
             {
                 Left = 62,
                 Top = 50,
-                Width = 320,
-                DropDownStyle = ComboBoxStyle.DropDown
+                Width = 80,
+                Minimum = 1,
+                Maximum = 65535,
+                ThousandsSeparator = false
             };
-            foreach (var p in DefaultPorts)
-                cmbPort.Items.Add(p.ToString());
+            cmbPresets = new ComboBox
+            {
+                Left = 150,
+                Top = 50,
+                Width = 318,
+                DropDownStyle = ComboBoxStyle.DropDownList,
+                DisplayMember = nameof(PortPreset.Label)
+            };
+            foreach (var preset in DefaultPorts)
+                cmbPresets.Items.Add(preset);
 
             var selected = port is > 0 and <= 65535 ? port : 8080;
-            cmbPort.Text = selected.ToString();
-            if (!cmbPort.Items.Contains(cmbPort.Text))
-                cmbPort.Items.Insert(0, cmbPort.Text);
+            numPort.Value = selected;
 
-            var lblHint = new Label
-            {
-                Text = "Common website ports are listed. You can also type a custom port.",
-                Left = 16,
-                Top = 86,
-                Width = 370
-            };
+            lblLan = new Label { Left = 16, Top = 96, Width = 452, AutoEllipsis = true };
+            lblPublic = new Label { Left = 16, Top = 118, Width = 452, AutoEllipsis = true };
 
-            btnOk = new Button { Text = "OK", Left = 216, Top = 122, Width = 80, DialogResult = DialogResult.OK };
-            btnCancel = new Button { Text = "Cancel", Left = 302, Top = 122, Width = 80, DialogResult = DialogResult.Cancel };
+            btnOk = new Button { Text = "OK", Left = 296, Top = 178, Width = 80, DialogResult = DialogResult.OK };
+            btnCancel = new Button { Text = "Cancel", Left = 388, Top = 178, Width = 80, DialogResult = DialogResult.Cancel };
 
             AcceptButton = btnOk;
             CancelButton = btnCancel;
 
             Controls.Add(chkEnabled);
             Controls.Add(lblPort);
-            Controls.Add(cmbPort);
-            Controls.Add(lblHint);
+            Controls.Add(numPort);
+            Controls.Add(cmbPresets);
+            Controls.Add(lblLan);
+            Controls.Add(lblPublic);
             Controls.Add(btnOk);
             Controls.Add(btnCancel);
 
             chkEnabled.CheckedChanged += (_, _) => UpdateEnabledState();
+            numPort.ValueChanged += (_, _) =>
+            {
+                SyncPresetFromPort();
+                UpdateAddressLabels();
+            };
+            cmbPresets.SelectedIndexChanged += CmbPresets_SelectedIndexChanged;
             btnOk.Click += BtnOk_Click;
+
+            SyncPresetFromPort();
+            UpdateAddressLabels();
             UpdateEnabledState();
+        }
+
+        private void CmbPresets_SelectedIndexChanged(object? sender, EventArgs e)
+        {
+            if (_updatingPort)
+                return;
+            if (cmbPresets.SelectedItem is PortPreset preset)
+            {
+                _updatingPort = true;
+                numPort.Value = preset.Port;
+                _updatingPort = false;
+                UpdateAddressLabels();
+            }
+        }
+
+        private void SyncPresetFromPort()
+        {
+            var port = (int)numPort.Value;
+            _updatingPort = true;
+            var match = -1;
+            for (var i = 0; i < cmbPresets.Items.Count; i++)
+            {
+                if (cmbPresets.Items[i] is PortPreset preset && preset.Port == port)
+                {
+                    match = i;
+                    break;
+                }
+            }
+            cmbPresets.SelectedIndex = match;
+            _updatingPort = false;
+        }
+
+        private void UpdateAddressLabels()
+        {
+            var port = (int)numPort.Value;
+            lblLan.Text = $"LAN:    {FormatAddress(_lanIp, port)}";
+            lblPublic.Text = $"Public: {FormatAddress(_publicIp, port)}";
+        }
+
+        private static string FormatAddress(string ip, int port)
+        {
+            if (string.IsNullOrWhiteSpace(ip) || ip == "N/A")
+                return $"N/A:{port}";
+            return $"http://{ip}:{port}/";
         }
 
         private void UpdateEnabledState()
         {
-            cmbPort.Enabled = chkEnabled.Checked;
+            var on = chkEnabled.Checked;
+            numPort.Enabled = on;
+            cmbPresets.Enabled = on;
         }
 
         private void BtnOk_Click(object? sender, EventArgs e)
         {
             WebsiteEnabled = chkEnabled.Checked;
-            if (!WebsiteEnabled)
-            {
-                Port = ParsePort(cmbPort.Text) ?? 8080;
-                return;
-            }
-
-            var port = ParsePort(cmbPort.Text);
-            if (port == null)
-            {
-                MessageBox.Show("Enter a valid port between 1 and 65535.", Text, MessageBoxButtons.OK, MessageBoxIcon.Information);
-                DialogResult = DialogResult.None;
-                return;
-            }
-
-            Port = port.Value;
-        }
-
-        private static int? ParsePort(string? text)
-        {
-            if (int.TryParse(text?.Trim(), out var port) && port is > 0 and <= 65535)
-                return port;
-            return null;
+            Port = (int)numPort.Value;
         }
     }
 }

@@ -1306,7 +1306,7 @@ namespace MC_Server_Manager_3
 
         private void statusWebsiteToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            using var dlg = new StatusWebsiteForm(AppSettings.StatusWebsiteEnabled, AppSettings.StatusWebsitePort);
+            using var dlg = new StatusWebsiteForm(AppSettings.StatusWebsiteEnabled, AppSettings.StatusWebsitePort, GetLocalIPv4Address(), cachedPublicIp);
             if (dlg.ShowDialog(this) != DialogResult.OK)
                 return;
 
