@@ -21,6 +21,8 @@ namespace MC_Server_Manager_3
         {
             public bool NeverShowStopWarningAgain { get; set; } = false;
             public bool NeverShowBackupWarningAgain { get; set; } = false;
+            public bool StatusWebsiteEnabled { get; set; } = false;
+            public int StatusWebsitePort { get; set; } = 8080;
         }
 
         /// <summary>
@@ -47,6 +49,32 @@ namespace MC_Server_Manager_3
             {
                 var data = GetSetting();
                 data.NeverShowBackupWarningAgain = value;
+                SaveSetting(data);
+            }
+        }
+
+        public static bool StatusWebsiteEnabled
+        {
+            get => GetSetting().StatusWebsiteEnabled;
+            set
+            {
+                var data = GetSetting();
+                data.StatusWebsiteEnabled = value;
+                SaveSetting(data);
+            }
+        }
+
+        public static int StatusWebsitePort
+        {
+            get
+            {
+                var port = GetSetting().StatusWebsitePort;
+                return port is > 0 and <= 65535 ? port : 8080;
+            }
+            set
+            {
+                var data = GetSetting();
+                data.StatusWebsitePort = value is > 0 and <= 65535 ? value : 8080;
                 SaveSetting(data);
             }
         }

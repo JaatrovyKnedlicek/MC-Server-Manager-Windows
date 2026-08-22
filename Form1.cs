@@ -9,6 +9,7 @@ using System.IO;
 using System.IO.Compression;
 using System.Linq;
 using System.Runtime.InteropServices;
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading;
@@ -45,6 +46,9 @@ namespace MC_Server_Manager_3
 
         // Server process watcher timer
         private System.Windows.Forms.Timer? processWatcherTimer;
+
+        private StatusWebsiteHost? statusWebsiteHost;
+        private string cachedPublicIp = "...";
 
         // servers storage
         private readonly List<ServerInfo> servers = new List<ServerInfo>();
@@ -277,6 +281,9 @@ namespace MC_Server_Manager_3
 
             // Start the process watcher timer
             InitializeProcessWatcher();
+
+            _ = RefreshPublicIpAsync();
+            TryStartStatusWebsiteFromSettings();
 
             // (Stop and Console buttons removed from UI)
 
@@ -633,11 +640,13 @@ namespace MC_Server_Manager_3
                 http.Timeout = TimeSpan.FromSeconds(5);
                 var ip = (await http.GetStringAsync("https://api.ipify.org")).Trim();
                 if (string.IsNullOrEmpty(ip)) ip = "N/A";
+                cachedPublicIp = ip;
                 if (!IsHandleCreated || IsDisposed) return;
                 BeginInvoke(() => lblIPValue.Text = $"IP LAN: {lanIp}\r\nIP: {ip}");
             }
             catch
             {
+                cachedPublicIp = "N/A";
                 try { if (IsHandleCreated && !IsDisposed) BeginInvoke(() => lblIPValue.Text = $"IP LAN: {lanIp}\r\nIP: N/A"); } catch { }
             }
         }
@@ -674,6 +683,8 @@ namespace MC_Server_Manager_3
                 try { FreeConsole(); } catch { }
                 consoleAllocated = false;
             }
+
+            try { statusWebsiteHost?.Stop(); } catch { }
             base.OnFormClosing(e);
         }
 
@@ -1290,6 +1301,177 @@ namespace MC_Server_Manager_3
             catch
             {
                 // Silently ignore any errors in the watcher
+            }
+        }
+
+        private void statusWebsiteToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            using var dlg = new StatusWebsiteForm(AppSettings.StatusWebsiteEnabled, AppSettings.StatusWebsitePort);
+            if (dlg.ShowDialog(this) != DialogResult.OK)
+                return;
+
+            if (dlg.WebsiteEnabled)
+            {
+                try
+                {
+                    StartStatusWebsite(dlg.Port);
+                    AppSettings.StatusWebsitePort = dlg.Port;
+                    AppSettings.StatusWebsiteEnabled = true;
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Could not start the status website on port {dlg.Port}: {ex.Message}", "Status Website", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+            }
+            else
+            {
+                StopStatusWebsite();
+                AppSettings.StatusWebsitePort = dlg.Port;
+                AppSettings.StatusWebsiteEnabled = false;
+            }
+        }
+
+        private void TryStartStatusWebsiteFromSettings()
+        {
+            if (!AppSettings.StatusWebsiteEnabled)
+                return;
+
+            try
+            {
+                StartStatusWebsite(AppSettings.StatusWebsitePort);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Status website could not start on port {AppSettings.StatusWebsitePort}: {ex.Message}", "Status Website", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
+        }
+
+        private void StartStatusWebsite(int port)
+        {
+            statusWebsiteHost ??= new StatusWebsiteHost(GetStatusWebsiteServers);
+            statusWebsiteHost.Start(port);
+        }
+
+        private void StopStatusWebsite()
+        {
+            statusWebsiteHost?.Stop();
+        }
+
+        private IReadOnlyList<StatusWebsiteServerInfo> GetStatusWebsiteServers()
+        {
+            if (IsHandleCreated && InvokeRequired)
+                return (IReadOnlyList<StatusWebsiteServerInfo>)Invoke(GetStatusWebsiteServers);
+
+            var lan = GetLocalIPv4Address();
+            var list = new List<StatusWebsiteServerInfo>(servers.Count);
+            foreach (var s in servers)
+            {
+                var port = s.Port;
+                var propsPath = ResolvePropertiesPath(s);
+                if (!string.IsNullOrEmpty(propsPath) && TryReadPortFromProperties(propsPath, out var propsPort))
+                    port = propsPort;
+
+                var publicIp = string.IsNullOrWhiteSpace(cachedPublicIp) || cachedPublicIp == "..." ? "N/A" : cachedPublicIp;
+                var lanIp = string.IsNullOrWhiteSpace(lan) ? "N/A" : lan;
+                var online = s.Running && s.ProcessInstance != null && !s.ProcessInstance.HasExited;
+
+                list.Add(new StatusWebsiteServerInfo
+                {
+                    Name = s.Name,
+                    Motd = ReadMotd(propsPath),
+                    Version = string.IsNullOrWhiteSpace(s.Version) ? "N/A" : s.Version,
+                    PublicAddress = $"{publicIp}:{port}",
+                    LanAddress = $"{lanIp}:{port}",
+                    Online = online
+                });
+            }
+
+            return list;
+        }
+
+        private static string? ResolvePropertiesPath(ServerInfo s)
+        {
+            if (!string.IsNullOrEmpty(s.PropertiesPath) && File.Exists(s.PropertiesPath))
+                return s.PropertiesPath;
+            if (string.IsNullOrEmpty(s.FolderPath))
+                return null;
+            var path = Path.Combine(s.FolderPath, "server.properties");
+            return File.Exists(path) ? path : null;
+        }
+
+        private static string ReadMotd(string? propertiesPath)
+        {
+            var motd = ReadServerProperty(propertiesPath, "motd");
+            motd = UnescapeServerProperty(motd);
+            motd = StripMinecraftFormatting(motd);
+            return string.IsNullOrWhiteSpace(motd) ? "A Minecraft Server" : motd.Trim();
+        }
+
+        private static string ReadServerProperty(string? propertiesPath, string key)
+        {
+            if (string.IsNullOrEmpty(propertiesPath) || !File.Exists(propertiesPath))
+                return string.Empty;
+
+            var prefix = key + "=";
+            try
+            {
+                foreach (var line in File.ReadAllLines(propertiesPath))
+                {
+                    var trimmed = line.Trim();
+                    if (trimmed.StartsWith('#') || !trimmed.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                        continue;
+                    return trimmed[prefix.Length..];
+                }
+            }
+            catch
+            {
+                // ignore unreadable properties files
+            }
+
+            return string.Empty;
+        }
+
+        private static string UnescapeServerProperty(string value)
+        {
+            if (string.IsNullOrEmpty(value))
+                return value;
+
+            value = value.Replace("\\n", " ").Replace("\\u00A7", "§").Replace("\\u00a7", "§");
+            return value;
+        }
+
+        private static string StripMinecraftFormatting(string text)
+        {
+            if (string.IsNullOrEmpty(text))
+                return text;
+
+            var sb = new StringBuilder(text.Length);
+            for (var i = 0; i < text.Length; i++)
+            {
+                if ((text[i] == '§' || text[i] == '&') && i + 1 < text.Length)
+                {
+                    i++;
+                    continue;
+                }
+                sb.Append(text[i]);
+            }
+            return sb.ToString();
+        }
+
+        private async Task RefreshPublicIpAsync()
+        {
+            try
+            {
+                using var http = new HttpClient();
+                http.Timeout = TimeSpan.FromSeconds(5);
+                var ip = (await http.GetStringAsync("https://api.ipify.org")).Trim();
+                if (!string.IsNullOrEmpty(ip))
+                    cachedPublicIp = ip;
+            }
+            catch
+            {
+                if (cachedPublicIp == "...")
+                    cachedPublicIp = "N/A";
             }
         }
 

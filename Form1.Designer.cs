@@ -27,6 +27,7 @@ namespace MC_Server_Manager_3
             backupWorldToolStripMenuItem = new ToolStripMenuItem();
             backupServerToolStripMenuItem = new ToolStripMenuItem();
             postShutdownActionsToolStripMenuItem = new ToolStripMenuItem();
+            statusWebsiteToolStripMenuItem = new ToolStripMenuItem();
             killServerToolStripMenuItem = new ToolStripMenuItem();
             editToolStripMenuItem = new ToolStripMenuItem();
             viewToolStripMenuItem = new ToolStripMenuItem();
@@ -87,7 +88,7 @@ namespace MC_Server_Manager_3
             // 
             // toolsToolStripMenuItem
             // 
-            toolsToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { openServerFolderToolStripMenuItem, openPluginsFolderToolStripMenuItem, cleanLogsFolderToolStripMenuItem, openRouterSettingsToolStripMenuItem, serverPropertiesToolStripMenuItem, editRamToolStripMenuItem, backupWorldToolStripMenuItem, backupServerToolStripMenuItem, postShutdownActionsToolStripMenuItem, killServerToolStripMenuItem });
+            toolsToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { openServerFolderToolStripMenuItem, openPluginsFolderToolStripMenuItem, cleanLogsFolderToolStripMenuItem, openRouterSettingsToolStripMenuItem, serverPropertiesToolStripMenuItem, editRamToolStripMenuItem, backupWorldToolStripMenuItem, backupServerToolStripMenuItem, postShutdownActionsToolStripMenuItem, statusWebsiteToolStripMenuItem, killServerToolStripMenuItem });
             toolsToolStripMenuItem.Name = "toolsToolStripMenuItem";
             toolsToolStripMenuItem.Size = new Size(47, 20);
             toolsToolStripMenuItem.Text = "Tools";
@@ -154,6 +155,13 @@ namespace MC_Server_Manager_3
             postShutdownActionsToolStripMenuItem.Size = new Size(186, 22);
             postShutdownActionsToolStripMenuItem.Text = "Post-Shutdown Actions";
             postShutdownActionsToolStripMenuItem.Click += postShutdownActionsToolStripMenuItem_Click;
+            // 
+            // statusWebsiteToolStripMenuItem
+            // 
+            statusWebsiteToolStripMenuItem.Name = "statusWebsiteToolStripMenuItem";
+            statusWebsiteToolStripMenuItem.Size = new Size(186, 22);
+            statusWebsiteToolStripMenuItem.Text = "Status Website";
+            statusWebsiteToolStripMenuItem.Click += statusWebsiteToolStripMenuItem_Click;
             // 
             // killServerToolStripMenuItem
             // 
@@ -448,6 +456,7 @@ namespace MC_Server_Manager_3
         private ToolStripMenuItem backupWorldToolStripMenuItem;
         private ToolStripMenuItem backupServerToolStripMenuItem;
         private ToolStripMenuItem postShutdownActionsToolStripMenuItem;
+        private ToolStripMenuItem statusWebsiteToolStripMenuItem;
         private ToolStripMenuItem killServerToolStripMenuItem;
     }
 }
