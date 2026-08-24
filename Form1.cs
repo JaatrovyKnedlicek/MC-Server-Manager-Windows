@@ -812,7 +812,7 @@ namespace MC_Server_Manager_3
             MessageBox.Show("Toggle Status Bar - not implemented yet.", "View", MessageBoxButtons.OK, MessageBoxIcon.Information);
 
         private void aboutToolStripMenuItem_Click(object sender, EventArgs e) =>
-            MessageBox.Show("Minecraft Server Manager 3\nVersion: 3.1\n© Ján Repka 2026", "About", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            MessageBox.Show("Minecraft Server Manager 3\nVersion: 3.2\n© Ján Repka 2026", "About", MessageBoxButtons.OK, MessageBoxIcon.Information);
 
         private void label1_Click(object sender, EventArgs e) { }
 
@@ -1208,6 +1208,152 @@ namespace MC_Server_Manager_3
             catch (Exception ex)
             {
                 MessageBox.Show($"Failed to kill server process: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        // Check port availability from Tools menu
+        private async void checkPortAvailabilityToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            if (SelectedIndex < 0)
+            {
+                MessageBox.Show("Select a server first.", "Check Port Availability", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            var s = servers[SelectedIndex];
+            var port = s.Port;
+
+            // Sync port from properties if available
+            var propsPath = s.PropertiesPath;
+            if (string.IsNullOrEmpty(propsPath) && !string.IsNullOrEmpty(s.FolderPath))
+            {
+                propsPath = Path.Combine(s.FolderPath, "server.properties");
+            }
+
+            if (!string.IsNullOrEmpty(propsPath) && File.Exists(propsPath) && TryReadPortFromProperties(propsPath, out var propsPort))
+            {
+                port = propsPort;
+            }
+
+            var resultsForm = new PortCheckResultsForm(s.Name);
+            resultsForm.Show(this);
+
+            try
+            {
+                await CheckPortAvailabilityAsync(s, port, resultsForm);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Port check failed: {ex.Message}", "Check Port Availability", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        // Server icon settings from Tools menu
+        private void serverIconToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            if (SelectedIndex < 0)
+            {
+                MessageBox.Show("Select a server first.", "Server Icon", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            var s = servers[SelectedIndex];
+            if (string.IsNullOrEmpty(s.FolderPath) || !Directory.Exists(s.FolderPath))
+            {
+                MessageBox.Show("Server folder not found.", "Server Icon", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+
+            using var dlg = new ServerIconForm(s.Name, s.FolderPath);
+            dlg.ShowDialog(this);
+        }
+
+        // Check if server port is open and available to the public
+        private async Task CheckPortAvailabilityAsync(ServerInfo server, int port, PortCheckResultsForm resultsForm)
+        {
+            try
+            {
+                var lanIp = GetLocalIPv4Address();
+                var publicIp = cachedPublicIp;
+
+                // Add initial items to ListView with "Checking" status
+                resultsForm.AddLocalPortCheck(port, "127.0.0.1");
+                resultsForm.AddPublicPortCheck(port, publicIp);
+
+                var statusWebsiteEnabled = AppSettings.StatusWebsiteEnabled;
+                var statusWebsitePort = AppSettings.StatusWebsitePort;
+
+                if (statusWebsiteEnabled)
+                {
+                    resultsForm.AddStatusWebsiteCheck(statusWebsitePort, publicIp);
+                }
+
+                // Step 1: Check local port availability
+                await Task.Delay(100);
+                var localPortOpen = await IsPortAvailableLocallyAsync(port);
+                resultsForm.UpdateLocalPortResult(localPortOpen);
+
+                // Step 2: Check public port availability
+                await Task.Delay(100);
+                var publicPortOpen = await IsPortAvailablePubliclyAsync(publicIp, port);
+                resultsForm.UpdatePublicPortResult(publicPortOpen);
+
+                // Step 3: Check status website if enabled
+                if (statusWebsiteEnabled)
+                {
+                    await Task.Delay(100);
+                    var statusWebsiteOpen = await IsPortAvailablePubliclyAsync(publicIp, statusWebsitePort);
+                    resultsForm.UpdateStatusWebsiteResult(statusWebsiteOpen);
+                }
+            }
+            catch (Exception ex)
+            {
+                // Log the error but don't crash
+                System.Diagnostics.Debug.WriteLine($"Port check error: {ex.Message}");
+            }
+        }
+
+        // Check if port is available locally
+        private async Task<bool> IsPortAvailableLocallyAsync(int port)
+        {
+            try
+            {
+                using var tcpClient = new TcpClient();
+                var connectTask = tcpClient.ConnectAsync("127.0.0.1", port);
+                var timeoutTask = Task.Delay(TimeSpan.FromSeconds(2));
+                var completedTask = await Task.WhenAny(connectTask, timeoutTask);
+
+                if (completedTask == timeoutTask)
+                {
+                    return false;
+                }
+
+                await connectTask;
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        // Check if port is available publicly using external service
+        private async Task<bool> IsPortAvailablePubliclyAsync(string publicIp, int port)
+        {
+            try
+            {
+                using var httpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(5) };
+                var response = await httpClient.GetAsync($"https://api.mcsrvstat.us/2/{publicIp}:{port}");
+                if (response.IsSuccessStatusCode)
+                {
+                    var content = await response.Content.ReadAsStringAsync();
+                    return content.Contains("\"online\":true");
+                }
+                return false;
+            }
+            catch
+            {
+                return false;
             }
         }
 

@@ -30,6 +30,8 @@ namespace MC_Server_Manager_3
             statusWebsiteToolStripMenuItem = new ToolStripMenuItem();
             discordWebhookToolStripMenuItem = new ToolStripMenuItem();
             killServerToolStripMenuItem = new ToolStripMenuItem();
+            checkPortAvailabilityToolStripMenuItem = new ToolStripMenuItem();
+            serverIconToolStripMenuItem = new ToolStripMenuItem();
             editToolStripMenuItem = new ToolStripMenuItem();
             viewToolStripMenuItem = new ToolStripMenuItem();
             statusBarToolStripMenuItem = new ToolStripMenuItem();
@@ -56,9 +58,9 @@ namespace MC_Server_Manager_3
             menuStrip1.SuspendLayout();
             groupBoxInfo.SuspendLayout();
             SuspendLayout();
-            //
+            // 
             // menuStrip1
-            //
+            // 
             menuStrip1.Items.AddRange(new ToolStripItem[] { fileToolStripMenuItem, toolsToolStripMenuItem, editToolStripMenuItem, viewToolStripMenuItem, helpToolStripMenuItem });
             menuStrip1.Location = new Point(0, 0);
             menuStrip1.Name = "menuStrip1";
@@ -89,7 +91,7 @@ namespace MC_Server_Manager_3
             // 
             // toolsToolStripMenuItem
             // 
-            toolsToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { openServerFolderToolStripMenuItem, openPluginsFolderToolStripMenuItem, cleanLogsFolderToolStripMenuItem, openRouterSettingsToolStripMenuItem, serverPropertiesToolStripMenuItem, editRamToolStripMenuItem, backupWorldToolStripMenuItem, backupServerToolStripMenuItem, postShutdownActionsToolStripMenuItem, statusWebsiteToolStripMenuItem, discordWebhookToolStripMenuItem, killServerToolStripMenuItem });
+            toolsToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { openServerFolderToolStripMenuItem, openPluginsFolderToolStripMenuItem, cleanLogsFolderToolStripMenuItem, openRouterSettingsToolStripMenuItem, serverPropertiesToolStripMenuItem, editRamToolStripMenuItem, backupWorldToolStripMenuItem, backupServerToolStripMenuItem, postShutdownActionsToolStripMenuItem, statusWebsiteToolStripMenuItem, discordWebhookToolStripMenuItem, killServerToolStripMenuItem, checkPortAvailabilityToolStripMenuItem, serverIconToolStripMenuItem });
             toolsToolStripMenuItem.Name = "toolsToolStripMenuItem";
             toolsToolStripMenuItem.Size = new Size(47, 20);
             toolsToolStripMenuItem.Text = "Tools";
@@ -97,86 +99,100 @@ namespace MC_Server_Manager_3
             // openServerFolderToolStripMenuItem
             // 
             openServerFolderToolStripMenuItem.Name = "openServerFolderToolStripMenuItem";
-            openServerFolderToolStripMenuItem.Size = new Size(186, 22);
+            openServerFolderToolStripMenuItem.Size = new Size(203, 22);
             openServerFolderToolStripMenuItem.Text = "Open Server Folder";
             openServerFolderToolStripMenuItem.Click += openServerFolderToolStripMenuItem_Click;
             // 
             // openPluginsFolderToolStripMenuItem
             // 
             openPluginsFolderToolStripMenuItem.Name = "openPluginsFolderToolStripMenuItem";
-            openPluginsFolderToolStripMenuItem.Size = new Size(186, 22);
+            openPluginsFolderToolStripMenuItem.Size = new Size(203, 22);
             openPluginsFolderToolStripMenuItem.Text = "Open Plugins Folder";
             openPluginsFolderToolStripMenuItem.Click += openPluginsFolderToolStripMenuItem_Click;
             // 
             // cleanLogsFolderToolStripMenuItem
             // 
             cleanLogsFolderToolStripMenuItem.Name = "cleanLogsFolderToolStripMenuItem";
-            cleanLogsFolderToolStripMenuItem.Size = new Size(186, 22);
+            cleanLogsFolderToolStripMenuItem.Size = new Size(203, 22);
             cleanLogsFolderToolStripMenuItem.Text = "Clean Logs Folder";
             cleanLogsFolderToolStripMenuItem.Click += cleanLogsFolderToolStripMenuItem_Click;
             // 
             // openRouterSettingsToolStripMenuItem
             // 
             openRouterSettingsToolStripMenuItem.Name = "openRouterSettingsToolStripMenuItem";
-            openRouterSettingsToolStripMenuItem.Size = new Size(186, 22);
+            openRouterSettingsToolStripMenuItem.Size = new Size(203, 22);
             openRouterSettingsToolStripMenuItem.Text = "Open Router Settings";
             openRouterSettingsToolStripMenuItem.Click += openRouterSettingsToolStripMenuItem_Click;
             // 
             // serverPropertiesToolStripMenuItem
             // 
             serverPropertiesToolStripMenuItem.Name = "serverPropertiesToolStripMenuItem";
-            serverPropertiesToolStripMenuItem.Size = new Size(186, 22);
+            serverPropertiesToolStripMenuItem.Size = new Size(203, 22);
             serverPropertiesToolStripMenuItem.Text = "Server Properties";
             serverPropertiesToolStripMenuItem.Click += serverPropertiesToolStripMenuItem_Click;
             // 
             // editRamToolStripMenuItem
             // 
             editRamToolStripMenuItem.Name = "editRamToolStripMenuItem";
-            editRamToolStripMenuItem.Size = new Size(186, 22);
+            editRamToolStripMenuItem.Size = new Size(203, 22);
             editRamToolStripMenuItem.Text = "RAM Usage Settings";
             editRamToolStripMenuItem.Click += serverEditRamToolStripMenuItem_Click;
             // 
             // backupWorldToolStripMenuItem
             // 
             backupWorldToolStripMenuItem.Name = "backupWorldToolStripMenuItem";
-            backupWorldToolStripMenuItem.Size = new Size(186, 22);
+            backupWorldToolStripMenuItem.Size = new Size(203, 22);
             backupWorldToolStripMenuItem.Text = "Backup world";
             backupWorldToolStripMenuItem.Click += backupWorldToolStripMenuItem_Click;
             // 
             // backupServerToolStripMenuItem
             // 
             backupServerToolStripMenuItem.Name = "backupServerToolStripMenuItem";
-            backupServerToolStripMenuItem.Size = new Size(186, 22);
+            backupServerToolStripMenuItem.Size = new Size(203, 22);
             backupServerToolStripMenuItem.Text = "Backup server";
             backupServerToolStripMenuItem.Click += backupServerToolStripMenuItem_Click;
             // 
             // postShutdownActionsToolStripMenuItem
             // 
             postShutdownActionsToolStripMenuItem.Name = "postShutdownActionsToolStripMenuItem";
-            postShutdownActionsToolStripMenuItem.Size = new Size(186, 22);
+            postShutdownActionsToolStripMenuItem.Size = new Size(203, 22);
             postShutdownActionsToolStripMenuItem.Text = "Post-Shutdown Actions";
             postShutdownActionsToolStripMenuItem.Click += postShutdownActionsToolStripMenuItem_Click;
             // 
             // statusWebsiteToolStripMenuItem
             // 
             statusWebsiteToolStripMenuItem.Name = "statusWebsiteToolStripMenuItem";
-            statusWebsiteToolStripMenuItem.Size = new Size(186, 22);
+            statusWebsiteToolStripMenuItem.Size = new Size(203, 22);
             statusWebsiteToolStripMenuItem.Text = "Status Website";
             statusWebsiteToolStripMenuItem.Click += statusWebsiteToolStripMenuItem_Click;
-            //
+            // 
             // discordWebhookToolStripMenuItem
             // 
             discordWebhookToolStripMenuItem.Name = "discordWebhookToolStripMenuItem";
-            discordWebhookToolStripMenuItem.Size = new Size(186, 22);
+            discordWebhookToolStripMenuItem.Size = new Size(203, 22);
             discordWebhookToolStripMenuItem.Text = "Discord Webhook Status";
             discordWebhookToolStripMenuItem.Click += discordWebhookToolStripMenuItem_Click;
             //
             // killServerToolStripMenuItem
-            // 
+            //
             killServerToolStripMenuItem.Name = "killServerToolStripMenuItem";
-            killServerToolStripMenuItem.Size = new Size(186, 22);
+            killServerToolStripMenuItem.Size = new Size(203, 22);
             killServerToolStripMenuItem.Text = "Kill Server Process";
             killServerToolStripMenuItem.Click += killServerToolStripMenuItem_Click;
+            //
+            // checkPortAvailabilityToolStripMenuItem
+            //
+            checkPortAvailabilityToolStripMenuItem.Name = "checkPortAvailabilityToolStripMenuItem";
+            checkPortAvailabilityToolStripMenuItem.Size = new Size(203, 22);
+            checkPortAvailabilityToolStripMenuItem.Text = "Check Port Availability";
+            checkPortAvailabilityToolStripMenuItem.Click += checkPortAvailabilityToolStripMenuItem_Click;
+            //
+            // serverIconToolStripMenuItem
+            //
+            serverIconToolStripMenuItem.Name = "serverIconToolStripMenuItem";
+            serverIconToolStripMenuItem.Size = new Size(203, 22);
+            serverIconToolStripMenuItem.Text = "Server Icon";
+            serverIconToolStripMenuItem.Click += serverIconToolStripMenuItem_Click;
             // 
             // editToolStripMenuItem
             // 
@@ -197,7 +213,7 @@ namespace MC_Server_Manager_3
             statusBarToolStripMenuItem.CheckOnClick = true;
             statusBarToolStripMenuItem.CheckState = CheckState.Checked;
             statusBarToolStripMenuItem.Name = "statusBarToolStripMenuItem";
-            statusBarToolStripMenuItem.Size = new Size(180, 22);
+            statusBarToolStripMenuItem.Size = new Size(126, 22);
             statusBarToolStripMenuItem.Text = "Status Bar";
             statusBarToolStripMenuItem.Click += statusBarToolStripMenuItem_Click;
             // 
@@ -211,7 +227,7 @@ namespace MC_Server_Manager_3
             // aboutToolStripMenuItem
             // 
             aboutToolStripMenuItem.Name = "aboutToolStripMenuItem";
-            aboutToolStripMenuItem.Size = new Size(180, 22);
+            aboutToolStripMenuItem.Size = new Size(107, 22);
             aboutToolStripMenuItem.Text = "About";
             aboutToolStripMenuItem.Click += aboutToolStripMenuItem_Click;
             // 
@@ -388,7 +404,7 @@ namespace MC_Server_Manager_3
             // 
             // btnEditProperties
             // 
-            btnEditProperties.Location = new Point(857, 36);
+            btnEditProperties.Location = new Point(857, 37);
             btnEditProperties.Name = "btnEditProperties";
             btnEditProperties.Size = new Size(110, 30);
             btnEditProperties.TabIndex = 8;
@@ -410,6 +426,7 @@ namespace MC_Server_Manager_3
             Controls.Add(btnDeleteServer);
             Controls.Add(btnEditProperties);
             Controls.Add(groupBoxInfo);
+            Cursor = Cursors.Default;
             Icon = (Icon)resources.GetObject("$this.Icon");
             MainMenuStrip = menuStrip1;
             Name = "Form1";
@@ -439,8 +456,6 @@ namespace MC_Server_Manager_3
         private ToolStripMenuItem statusBarToolStripMenuItem;
         private ToolStripMenuItem helpToolStripMenuItem;
         private ToolStripMenuItem aboutToolStripMenuItem;
-        private ToolStripMenuItem serverPropertiesToolStripMenuItem;
-        private ToolStripMenuItem editRamToolStripMenuItem;
 
         private GroupBox groupBoxInfo;
         private Label lblStatusTitle;
@@ -461,11 +476,15 @@ namespace MC_Server_Manager_3
         private ToolStripMenuItem openPluginsFolderToolStripMenuItem;
         private ToolStripMenuItem cleanLogsFolderToolStripMenuItem;
         private ToolStripMenuItem openRouterSettingsToolStripMenuItem;
+        private ToolStripMenuItem serverPropertiesToolStripMenuItem;
+        private ToolStripMenuItem editRamToolStripMenuItem;
         private ToolStripMenuItem backupWorldToolStripMenuItem;
         private ToolStripMenuItem backupServerToolStripMenuItem;
         private ToolStripMenuItem postShutdownActionsToolStripMenuItem;
         private ToolStripMenuItem statusWebsiteToolStripMenuItem;
         private ToolStripMenuItem discordWebhookToolStripMenuItem;
         private ToolStripMenuItem killServerToolStripMenuItem;
+        private ToolStripMenuItem checkPortAvailabilityToolStripMenuItem;
+        private ToolStripMenuItem serverIconToolStripMenuItem;
     }
 }
