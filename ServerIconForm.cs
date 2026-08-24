@@ -162,7 +162,7 @@ namespace MC_Server_Manager_3
         {
             using var ofd = new OpenFileDialog
             {
-                Filter = "Image Files|*.png;*.jpg;*.jpeg;*.gif;*.bmp;*.ico;*.webp|All Files|*.*",
+                Filter = "Image Files|*.png;*.jpg;*.jpeg;*.gif;*.bmp;*.ico;|All Files|*.*",
                 Title = "Select Server Icon"
             };
 
