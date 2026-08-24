@@ -189,10 +189,31 @@ namespace MC_Server_Manager_3
                 btnSave.Enabled = false;
 
                 var iconPath = Path.Combine(serverFolderPath, "server-icon.png");
+
+                // Dispose current icon to release file lock
+                pbCurrentIcon.Image = null;
+                currentIcon?.Dispose();
+                currentIcon = null;
+
+                // Delete old icon if it exists
+                if (File.Exists(iconPath))
+                {
+                    try
+                    {
+                        File.Delete(iconPath);
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show($"Failed to delete old icon: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        lblStatus.Text = "Error deleting old icon";
+                        return;
+                    }
+                }
+
+                // Save new icon
                 previewIcon.Save(iconPath, ImageFormat.Png);
 
-                // Update current icon display
-                currentIcon?.Dispose();
+                // Reload and display the new icon
                 currentIcon = new Bitmap(iconPath);
                 pbCurrentIcon.Image = currentIcon;
 

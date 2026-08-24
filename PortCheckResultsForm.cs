@@ -28,7 +28,7 @@ namespace MC_Server_Manager_3
         private void InitializeComponents()
         {
             this.Text = "Port Check Results";
-            this.Size = new Size(600, 400);
+            this.Size = new Size(600, 410);
             this.FormBorderStyle = FormBorderStyle.FixedDialog;
             this.StartPosition = FormStartPosition.CenterParent;
             this.MaximizeBox = false;

@@ -32,6 +32,7 @@ namespace MC_Server_Manager_3
             killServerToolStripMenuItem = new ToolStripMenuItem();
             checkPortAvailabilityToolStripMenuItem = new ToolStripMenuItem();
             serverIconToolStripMenuItem = new ToolStripMenuItem();
+            experimentalToolStripMenuItem = new ToolStripMenuItem();
             editToolStripMenuItem = new ToolStripMenuItem();
             viewToolStripMenuItem = new ToolStripMenuItem();
             statusBarToolStripMenuItem = new ToolStripMenuItem();
@@ -91,10 +92,11 @@ namespace MC_Server_Manager_3
             // 
             // toolsToolStripMenuItem
             // 
-            toolsToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { openServerFolderToolStripMenuItem, openPluginsFolderToolStripMenuItem, cleanLogsFolderToolStripMenuItem, openRouterSettingsToolStripMenuItem, serverPropertiesToolStripMenuItem, editRamToolStripMenuItem, backupWorldToolStripMenuItem, backupServerToolStripMenuItem, postShutdownActionsToolStripMenuItem, statusWebsiteToolStripMenuItem, discordWebhookToolStripMenuItem, killServerToolStripMenuItem, checkPortAvailabilityToolStripMenuItem, serverIconToolStripMenuItem });
+            toolsToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { openServerFolderToolStripMenuItem, openPluginsFolderToolStripMenuItem, cleanLogsFolderToolStripMenuItem, openRouterSettingsToolStripMenuItem, serverPropertiesToolStripMenuItem, editRamToolStripMenuItem, backupWorldToolStripMenuItem, backupServerToolStripMenuItem, postShutdownActionsToolStripMenuItem, statusWebsiteToolStripMenuItem, discordWebhookToolStripMenuItem, killServerToolStripMenuItem, serverIconToolStripMenuItem, experimentalToolStripMenuItem });
             toolsToolStripMenuItem.Name = "toolsToolStripMenuItem";
             toolsToolStripMenuItem.Size = new Size(47, 20);
             toolsToolStripMenuItem.Text = "Tools";
+            toolsToolStripMenuItem.Click += toolsToolStripMenuItem_Click;
             // 
             // openServerFolderToolStripMenuItem
             // 
@@ -172,27 +174,34 @@ namespace MC_Server_Manager_3
             discordWebhookToolStripMenuItem.Size = new Size(203, 22);
             discordWebhookToolStripMenuItem.Text = "Discord Webhook Status";
             discordWebhookToolStripMenuItem.Click += discordWebhookToolStripMenuItem_Click;
-            //
+            // 
             // killServerToolStripMenuItem
-            //
+            // 
             killServerToolStripMenuItem.Name = "killServerToolStripMenuItem";
             killServerToolStripMenuItem.Size = new Size(203, 22);
             killServerToolStripMenuItem.Text = "Kill Server Process";
             killServerToolStripMenuItem.Click += killServerToolStripMenuItem_Click;
-            //
-            // checkPortAvailabilityToolStripMenuItem
-            //
-            checkPortAvailabilityToolStripMenuItem.Name = "checkPortAvailabilityToolStripMenuItem";
-            checkPortAvailabilityToolStripMenuItem.Size = new Size(203, 22);
-            checkPortAvailabilityToolStripMenuItem.Text = "Check Port Availability";
-            checkPortAvailabilityToolStripMenuItem.Click += checkPortAvailabilityToolStripMenuItem_Click;
-            //
+            // 
             // serverIconToolStripMenuItem
-            //
+            // 
             serverIconToolStripMenuItem.Name = "serverIconToolStripMenuItem";
             serverIconToolStripMenuItem.Size = new Size(203, 22);
             serverIconToolStripMenuItem.Text = "Server Icon";
             serverIconToolStripMenuItem.Click += serverIconToolStripMenuItem_Click;
+            // 
+            // experimentalToolStripMenuItem
+            // 
+            experimentalToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { checkPortAvailabilityToolStripMenuItem });
+            experimentalToolStripMenuItem.Name = "experimentalToolStripMenuItem";
+            experimentalToolStripMenuItem.Size = new Size(203, 22);
+            experimentalToolStripMenuItem.Text = "Experimental";
+            // 
+            // checkPortAvailabilityToolStripMenuItem
+            // 
+            checkPortAvailabilityToolStripMenuItem.Name = "checkPortAvailabilityToolStripMenuItem";
+            checkPortAvailabilityToolStripMenuItem.Size = new Size(203, 22);
+            checkPortAvailabilityToolStripMenuItem.Text = "Check Port Availability";
+            checkPortAvailabilityToolStripMenuItem.Click += checkPortAvailabilityToolStripMenuItem_Click;
             // 
             // editToolStripMenuItem
             // 
@@ -426,7 +435,6 @@ namespace MC_Server_Manager_3
             Controls.Add(btnDeleteServer);
             Controls.Add(btnEditProperties);
             Controls.Add(groupBoxInfo);
-            Cursor = Cursors.Default;
             Icon = (Icon)resources.GetObject("$this.Icon");
             MainMenuStrip = menuStrip1;
             Name = "Form1";
@@ -486,5 +494,6 @@ namespace MC_Server_Manager_3
         private ToolStripMenuItem killServerToolStripMenuItem;
         private ToolStripMenuItem checkPortAvailabilityToolStripMenuItem;
         private ToolStripMenuItem serverIconToolStripMenuItem;
+        private ToolStripMenuItem experimentalToolStripMenuItem;
     }
 }
