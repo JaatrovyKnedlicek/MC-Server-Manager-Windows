@@ -7,7 +7,18 @@
     <UseWindowsForms>true</UseWindowsForms>
     <ImplicitUsings>enable</ImplicitUsings>
     <ApplicationIcon>assets\ikona.ico</ApplicationIcon>
-    <Nullable>enable</Nullable>
+    <Nullable>disable</Nullable>
+    <NuGetAuditLevel>low</NuGetAuditLevel>
+    <Title>MC Server Manager 3</Title>
+    <Version>3.2</Version>
+    <Company>Ján Repka</Company>
+    <Authors>Ján Repka</Authors>
+    <Copyright>© Ján Repka 2026</Copyright>
+    <PackageProjectUrl>https://github.com/JaatrovyKnedlicek/MC-Server-Manager-Windows</PackageProjectUrl>
+    <Description>Lighweight manager for locally hosted Minecraft PaperMC Servers.</Description>
+    <RepositoryUrl>https://github.com/JaatrovyKnedlicek/MC-Server-Manager-Windows</RepositoryUrl>
+    <AssemblyVersion>3.2</AssemblyVersion>
+    <FileVersion>3.2</FileVersion>
   </PropertyGroup>
 
   <ItemGroup>
