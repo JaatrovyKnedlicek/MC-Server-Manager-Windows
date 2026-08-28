@@ -33,6 +33,7 @@ namespace MC_Server_Manager_3
             checkPortAvailabilityToolStripMenuItem = new ToolStripMenuItem();
             serverIconToolStripMenuItem = new ToolStripMenuItem();
             experimentalToolStripMenuItem = new ToolStripMenuItem();
+            upnpSettingsToolStripMenuItem = new ToolStripMenuItem();
             editToolStripMenuItem = new ToolStripMenuItem();
             viewToolStripMenuItem = new ToolStripMenuItem();
             statusBarToolStripMenuItem = new ToolStripMenuItem();
@@ -92,7 +93,7 @@ namespace MC_Server_Manager_3
             // 
             // toolsToolStripMenuItem
             // 
-            toolsToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { openServerFolderToolStripMenuItem, openPluginsFolderToolStripMenuItem, cleanLogsFolderToolStripMenuItem, openRouterSettingsToolStripMenuItem, serverPropertiesToolStripMenuItem, editRamToolStripMenuItem, backupWorldToolStripMenuItem, backupServerToolStripMenuItem, postShutdownActionsToolStripMenuItem, statusWebsiteToolStripMenuItem, discordWebhookToolStripMenuItem, killServerToolStripMenuItem, serverIconToolStripMenuItem, experimentalToolStripMenuItem });
+            toolsToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { openServerFolderToolStripMenuItem, openPluginsFolderToolStripMenuItem, cleanLogsFolderToolStripMenuItem, openRouterSettingsToolStripMenuItem, serverPropertiesToolStripMenuItem, editRamToolStripMenuItem, backupWorldToolStripMenuItem, backupServerToolStripMenuItem, postShutdownActionsToolStripMenuItem, statusWebsiteToolStripMenuItem, discordWebhookToolStripMenuItem, killServerToolStripMenuItem, serverIconToolStripMenuItem, upnpSettingsToolStripMenuItem, experimentalToolStripMenuItem });
             toolsToolStripMenuItem.Name = "toolsToolStripMenuItem";
             toolsToolStripMenuItem.Size = new Size(47, 20);
             toolsToolStripMenuItem.Text = "Tools";
@@ -188,6 +189,13 @@ namespace MC_Server_Manager_3
             serverIconToolStripMenuItem.Size = new Size(203, 22);
             serverIconToolStripMenuItem.Text = "Server Icon";
             serverIconToolStripMenuItem.Click += serverIconToolStripMenuItem_Click;
+            // 
+            // upnpSettingsToolStripMenuItem
+            // 
+            upnpSettingsToolStripMenuItem.Name = "upnpSettingsToolStripMenuItem";
+            upnpSettingsToolStripMenuItem.Size = new Size(203, 22);
+            upnpSettingsToolStripMenuItem.Text = "UPnP Port Forwarding";
+            upnpSettingsToolStripMenuItem.Click += upnpSettingsToolStripMenuItem_Click;
             // 
             // experimentalToolStripMenuItem
             // 
@@ -495,5 +503,6 @@ namespace MC_Server_Manager_3
         private ToolStripMenuItem checkPortAvailabilityToolStripMenuItem;
         private ToolStripMenuItem serverIconToolStripMenuItem;
         private ToolStripMenuItem experimentalToolStripMenuItem;
+        private ToolStripMenuItem upnpSettingsToolStripMenuItem;
     }
 }

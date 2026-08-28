@@ -42,22 +42,16 @@ namespace MC_Server_Manager_3
             paperVersions.Clear();
             string latestVersion = null;
 
-            // Try a few likely locations for the JSON (app output, current dir, project parent)
-            var candidatePaths = new[]
-            {
-                Path.Combine(AppContext.BaseDirectory, "paper-versions.json"),
-                Path.Combine(Directory.GetCurrentDirectory(), "paper-versions.json"),
-                Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "paper-versions.json")
-            }.Select(p => Path.GetFullPath(p)).Distinct().ToList();
+            // Read from embedded resource
+            var assembly = System.Reflection.Assembly.GetExecutingAssembly();
+            var resourceName = "MC_Server_Manager_3.paper-versions.json";
 
-            string jsonPath = candidatePaths.FirstOrDefault(File.Exists);
-
-            if (jsonPath != null)
+            try
             {
-                try
+                using var stream = assembly.GetManifestResourceStream(resourceName);
+                if (stream != null)
                 {
-                    using var s = File.OpenRead(jsonPath);
-                    using var doc = JsonDocument.Parse(s);
+                    using var doc = JsonDocument.Parse(stream);
 
                     if (doc.RootElement.TryGetProperty("latest", out var latestEl))
                         latestVersion = latestEl.GetString();
@@ -72,14 +66,15 @@ namespace MC_Server_Manager_3
                         }
                     }
                 }
-                catch
+                else
                 {
-                    paperVersions.Clear();
+                    System.Diagnostics.Debug.WriteLine($"Embedded resource '{resourceName}' not found.");
                 }
             }
-            else
+            catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine("paper-versions.json not found. Searched: " + string.Join(" ; ", candidatePaths));
+                System.Diagnostics.Debug.WriteLine($"Failed to load embedded paper-versions.json: {ex.Message}");
+                paperVersions.Clear();
             }
 
             // fallback if empty

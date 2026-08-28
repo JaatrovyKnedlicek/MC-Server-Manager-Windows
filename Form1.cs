@@ -74,6 +74,9 @@ namespace MC_Server_Manager_3
             public string PostShutdownScriptType { get; set; } = "ps1";
             public string PostShutdownScriptFile { get; set; } = string.Empty;
 
+            // UPnP port forwarding
+            public bool UpnpEnabled { get; set; } = false;
+
             // process instance when running (may be detached)
             [JsonIgnore]
             public Process? ProcessInstance { get; set; }
@@ -262,6 +265,7 @@ namespace MC_Server_Manager_3
             public bool PostShutdownEnabled { get; set; }
             public string PostShutdownScriptType { get; set; } = "ps1";
             public string PostShutdownScriptFile { get; set; } = string.Empty;
+            public bool UpnpEnabled { get; set; } = false;
         }
 
         public Form1()
@@ -323,7 +327,8 @@ namespace MC_Server_Manager_3
                                     FolderPath = dir,
                                     PostShutdownEnabled = cfg.PostShutdownEnabled,
                                     PostShutdownScriptType = string.IsNullOrEmpty(cfg.PostShutdownScriptType) ? "ps1" : cfg.PostShutdownScriptType,
-                                    PostShutdownScriptFile = cfg.PostShutdownScriptFile ?? string.Empty
+                                    PostShutdownScriptFile = cfg.PostShutdownScriptFile ?? string.Empty,
+                                    UpnpEnabled = cfg.UpnpEnabled
                                 };
                                 servers.Add(si);
                                 continue;
@@ -494,6 +499,33 @@ namespace MC_Server_Manager_3
                     s.Players.Clear();
                     LoadSelectedServerInfo();
                     _ = SendDiscordWebhookAsync(s, true);
+
+                    // Open UPnP port if enabled
+                    if (s.UpnpEnabled)
+                    {
+                        _ = Task.Run(async () =>
+                        {
+                            try
+                            {
+                                var success = await UpnpService.Instance.OpenPortAsync(s.Port, $"Minecraft Server - {s.Name}");
+                                if (!success)
+                                {
+                                    // Show warning but don't block server start
+                                    this.Invoke(() =>
+                                    {
+                                        MessageBox.Show($"Failed to open port {s.Port} via UPnP. The router may not support UPnP or UPnP may be disabled.", "UPnP Warning", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                                    });
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                this.Invoke(() =>
+                                {
+                                    MessageBox.Show($"UPnP error: {ex.Message}", "UPnP Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                                });
+                            }
+                        });
+                    }
                 }
                 else
                 {
@@ -687,6 +719,20 @@ namespace MC_Server_Manager_3
             }
 
             try { statusWebsiteHost?.Stop(); } catch { }
+            
+            // Close all UPnP ports when application closes
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await UpnpService.Instance.CloseAllPortsAsync();
+                }
+                catch
+                {
+                    // Ignore errors during cleanup
+                }
+            });
+            
             base.OnFormClosing(e);
         }
 
@@ -812,7 +858,7 @@ namespace MC_Server_Manager_3
             MessageBox.Show("Toggle Status Bar - not implemented yet.", "View", MessageBoxButtons.OK, MessageBoxIcon.Information);
 
         private void aboutToolStripMenuItem_Click(object sender, EventArgs e) =>
-            MessageBox.Show("Minecraft Server Manager 3\nVersion: 3.2\n© Ján Repka 2026", "About", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            MessageBox.Show("Minecraft Server Manager 3\nVersion: 3.3\n© Ján Repka 2026", "About", MessageBoxButtons.OK, MessageBoxIcon.Information);
 
         private void label1_Click(object sender, EventArgs e) { }
 
@@ -1266,6 +1312,37 @@ namespace MC_Server_Manager_3
 
             using var dlg = new ServerIconForm(s.Name, s.FolderPath);
             dlg.ShowDialog(this);
+        }
+
+        // UPnP settings from Tools menu
+        private void upnpSettingsToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            if (SelectedIndex < 0)
+            {
+                MessageBox.Show("Select a server first.", "UPnP Port Forwarding", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            var s = servers[SelectedIndex];
+            if (string.IsNullOrEmpty(s.FolderPath) || !Directory.Exists(s.FolderPath))
+            {
+                MessageBox.Show("Server folder not found.", "UPnP Port Forwarding", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+
+            using var dlg = new UpnpSettingsForm(s.UpnpEnabled);
+            if (dlg.ShowDialog(this) == DialogResult.OK)
+            {
+                s.UpnpEnabled = dlg.UpnpEnabled;
+                try
+                {
+                    SaveServerConfig(s);
+                }
+                catch { }
+
+                PopulateServerList();
+                LoadSelectedServerInfo();
+            }
         }
 
         // Check if server port is open and available to the public
@@ -1754,7 +1831,8 @@ namespace MC_Server_Manager_3
                 EulaAccepted = s.EulaAccepted,
                 PostShutdownEnabled = s.PostShutdownEnabled,
                 PostShutdownScriptType = s.PostShutdownScriptType,
-                PostShutdownScriptFile = s.PostShutdownScriptFile
+                PostShutdownScriptFile = s.PostShutdownScriptFile,
+                UpnpEnabled = s.UpnpEnabled
             };
             var configJson = JsonSerializer.Serialize(cfg, new JsonSerializerOptions { WriteIndented = true });
             File.WriteAllText(Path.Combine(s.FolderPath, "config.json"), configJson);
@@ -1771,6 +1849,22 @@ namespace MC_Server_Manager_3
             {
                 RunPostShutdownAction(s);
                 _ = SendDiscordWebhookAsync(s, false);
+
+                // Close UPnP port if it was opened
+                if (s.UpnpEnabled)
+                {
+                    _ = Task.Run(async () =>
+                    {
+                        try
+                        {
+                            await UpnpService.Instance.ClosePortAsync(s.Port);
+                        }
+                        catch
+                        {
+                            // Ignore errors when closing port
+                        }
+                    });
+                }
             }
 
             if (SelectedIndex >= 0 && SelectedIndex < servers.Count && ReferenceEquals(servers[SelectedIndex], s))
