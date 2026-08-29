@@ -34,7 +34,7 @@ namespace MC_Server_Manager_3
         {
             InitializeComponent();
             InitializeServerSoftwareDropdown();
-            LoadPaperVersions();
+            LoadServerVersions();
             UpdateRamLimitsAndPresets();
             UpdateStep();
         }
@@ -43,13 +43,27 @@ namespace MC_Server_Manager_3
         {
             cmbServerSoftware.Items.Clear();
             cmbServerSoftware.Items.Add("Paper");
+            cmbServerSoftware.Items.Add("Purpur");
             cmbServerSoftware.SelectedIndex = 0;
         }
 
         private void cmbServerSoftware_SelectedIndexChanged(object? sender, EventArgs e)
         {
             // Reload versions when server software changes
-            LoadPaperVersions();
+            LoadServerVersions();
+        }
+
+        private void LoadServerVersions()
+        {
+            var software = cmbServerSoftware.SelectedItem?.ToString();
+            if (software == "Purpur")
+            {
+                LoadPurpurVersions();
+            }
+            else
+            {
+                LoadPaperVersions();
+            }
         }
 
         private async void LoadPaperVersions()
@@ -161,9 +175,99 @@ namespace MC_Server_Manager_3
             // Show error message if API failed
             if (errorCode != null || versionUrls.Count == 0)
             {
+                var apiName = ServerSoftware == "Purpur" ? "Purpur" : "PaperMC";
                 var message = errorCode != null 
-                    ? $"Failed to fetch the newest versions from the PaperMC API.\n\nError Code: {errorCode}\nError: {errorMessage}\n\nShowing locally stored versions instead."
-                    : "The PaperMC API returned no version data. Showing locally stored versions instead.";
+                    ? $"Failed to fetch the newest versions from the {apiName} API.\n\nError Code: {errorCode}\nError: {errorMessage}\n\nShowing locally stored versions instead."
+                    : $"The {apiName} API returned no version data. Showing locally stored versions instead.";
+                
+                MessageBox.Show(
+                    message,
+                    "API Error",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning);
+                
+                // Fall back to embedded JSON
+                LoadVersionsFromEmbeddedJson(ref latestVersion);
+            }
+
+            // Populate combo with all versions
+            PopulateVersionDropdown(latestVersion);
+        }
+
+        private async void LoadPurpurVersions()
+        {
+            versionUrls.Clear();
+            string latestVersion = null;
+            string errorMessage = null;
+            string errorCode = null;
+
+            // Try to fetch from Purpur API first
+            try
+            {
+                using var http = new HttpClient();
+                http.Timeout = TimeSpan.FromSeconds(10);
+                http.DefaultRequestHeaders.UserAgent.ParseAdd("MCServerManager/3.4");
+                var response = await http.GetAsync("https://api.purpurmc.org/v2/purpur");
+                
+                if (!response.IsSuccessStatusCode)
+                {
+                    errorCode = $"HTTP {(int)response.StatusCode}";
+                    errorMessage = response.ReasonPhrase ?? "Unknown HTTP error";
+                    System.Diagnostics.Debug.WriteLine($"Purpur API returned error status: {errorCode} - {errorMessage}");
+                }
+                else
+                {
+                    var apiResponse = await response.Content.ReadAsStringAsync();
+                    using var doc = JsonDocument.Parse(apiResponse);
+
+                    // Purpur API returns a JSON object with "versions" array
+                    if (doc.RootElement.TryGetProperty("versions", out var versions))
+                    {
+                        // Get the latest version
+                        if (versions.GetArrayLength() > 0)
+                        {
+                            latestVersion = versions[0].GetString();
+                        }
+
+                        // Build download URLs for each version using Purpur API format
+                        foreach (var version in versions.EnumerateArray())
+                        {
+                            var versionString = version.GetString();
+                            if (!string.IsNullOrEmpty(versionString))
+                            {
+                                // Use the Purpur API latest download format
+                                var downloadUrl = $"https://api.purpurmc.org/v2/purpur/{versionString}/latest/download";
+                                versionUrls[versionString] = downloadUrl;
+                            }
+                        }
+                    }
+                }
+            }
+            catch (HttpRequestException ex)
+            {
+                errorCode = "NETWORK_ERROR";
+                errorMessage = ex.Message;
+                System.Diagnostics.Debug.WriteLine($"HTTP request failed: {ex.Message}");
+            }
+            catch (TaskCanceledException ex) when (!ex.CancellationToken.IsCancellationRequested)
+            {
+                errorCode = "TIMEOUT_ERROR";
+                errorMessage = "Request timed out. The API did not respond within the expected time.";
+                System.Diagnostics.Debug.WriteLine($"Request timed out: {ex.Message}");
+            }
+            catch (Exception ex)
+            {
+                errorCode = "GENERAL_ERROR";
+                errorMessage = ex.Message;
+                System.Diagnostics.Debug.WriteLine($"Failed to fetch versions from Purpur API: {ex.Message}");
+            }
+
+            // Show error message if API failed
+            if (errorCode != null || versionUrls.Count == 0)
+            {
+                var message = errorCode != null 
+                    ? $"Failed to fetch the newest versions from the Purpur API.\n\nError Code: {errorCode}\nError: {errorMessage}\n\nShowing locally stored versions instead."
+                    : "The Purpur API returned no version data. Showing locally stored versions instead.";
                 
                 MessageBox.Show(
                     message,
@@ -504,8 +608,8 @@ namespace MC_Server_Manager_3
                     return;
                 }
 
-                // download server jar into this folder as paper.jar
-                var destJar = Path.Combine(ServerFolderPath, "paper.jar");
+                // download server jar into this folder as server.jar (generic name)
+                var destJar = Path.Combine(ServerFolderPath, "server.jar");
                 var ctsPaper = new CancellationTokenSource();
                 using (var progressDlg = new ProgressDialog(ctsPaper, $"Downloading {ServerSoftware} {version}..."))
                 {
@@ -787,12 +891,12 @@ namespace MC_Server_Manager_3
 
                 if (File.Exists(javaExe))
                 {
-                    startCmd = $"@echo off\r\n\"{javaExe}\" -Xms{ramArg} -Xmx{ramArg} -jar \"%~dp0\\paper.jar\" --nogui\r\n";
+                    startCmd = $"@echo off\r\n\"{javaExe}\" -Xms{ramArg} -Xmx{ramArg} -jar \"%~dp0\\server.jar\" --nogui\r\n";
                 }
                 else
                 {
                     MessageBox.Show($"Bundled JDK not found for Java {javaMajor}, start.cmd will use system java.", "Warning", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                    startCmd = $"@echo off\r\njava -Xms{ramArg} -Xmx{ramArg} -jar \"%~dp0\\paper.jar\" --nogui\r\n";
+                    startCmd = $"@echo off\r\njava -Xms{ramArg} -Xmx{ramArg} -jar \"%~dp0\\server.jar\" --nogui\r\n";
                 }
 
                 if (!string.IsNullOrEmpty(ServerFolderPath))

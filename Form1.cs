@@ -59,7 +59,7 @@ namespace MC_Server_Manager_3
         // root folder under program directory where servers are stored
         private string ServersRoot => Path.Combine(AppContext.BaseDirectory, "servers");
 
-        private record ServerInfo(string Name, string IP, int Port, string Version)
+        private record ServerInfo(string Name, string IP, int Port, string Version, string ServerSoftware = "Paper")
         {
             public int RamMB { get; set; } = 2048;
             public string PropertiesPath { get; set; } = string.Empty;
@@ -258,6 +258,7 @@ namespace MC_Server_Manager_3
         {
             public string Name { get; set; } = string.Empty;
             public string Version { get; set; } = string.Empty;
+            public string ServerSoftware { get; set; } = "Paper";
             public int Port { get; set; }
             public int RamMB { get; set; }
             public string PropertiesFileName { get; set; } = string.Empty;
@@ -319,7 +320,8 @@ namespace MC_Server_Manager_3
                                 var si = new ServerInfo(cfg.Name,
                                                         "127.0.0.1",
                                                         cfg.Port,
-                                                        cfg.Version)
+                                                        cfg.Version,
+                                                        cfg.ServerSoftware ?? "Paper")
                                 {
                                     RamMB = cfg.RamMB,
                                     PropertiesPath = string.IsNullOrEmpty(cfg.PropertiesFileName) ? string.Empty : Path.Combine(dir, cfg.PropertiesFileName),
@@ -340,7 +342,7 @@ namespace MC_Server_Manager_3
 
                         // fallback: no config.json ? infer from folder name
                         var folderName = Path.GetFileName(dir);
-                        var fallback = new ServerInfo(folderName, "127.0.0.1", 25565, "N/A")
+                        var fallback = new ServerInfo(folderName, "127.0.0.1", 25565, "N/A", "Paper")
                         {
                             FolderPath = dir
                         };
@@ -477,7 +479,7 @@ namespace MC_Server_Manager_3
                     string javaToUse = File.Exists(bundledJava) ? bundledJava : "java";
 
                     string ramArg = (s.RamMB % 1024 == 0) ? $"{s.RamMB / 1024}G" : $"{s.RamMB}M";
-                    var jarPath = Path.Combine(s.FolderPath, "paper.jar");
+                    var jarPath = Path.Combine(s.FolderPath, "server.jar");
 
                     var psi = new ProcessStartInfo
                     {
@@ -772,7 +774,7 @@ namespace MC_Server_Manager_3
             {
                 if (!string.IsNullOrEmpty(dlg.DownloadedJarPath) && File.Exists(dlg.DownloadedJarPath))
                 {
-                    var destJar = Path.Combine(folder, "paper.jar");
+                    var destJar = Path.Combine(folder, "server.jar");
                     var srcFull = Path.GetFullPath(dlg.DownloadedJarPath);
                     var destFull = Path.GetFullPath(destJar);
 
@@ -798,6 +800,7 @@ namespace MC_Server_Manager_3
             {
                 Name = name,
                 Version = version,
+                ServerSoftware = dlg.ServerSoftware,
                 Port = port,
                 RamMB = dlg.ServerRamMB,
                 PropertiesFileName = string.Empty, // no server.properties
@@ -808,7 +811,7 @@ namespace MC_Server_Manager_3
             try { File.WriteAllText(Path.Combine(folder, "config.json"), configJson); } catch { }
 
             // add to in-memory list and update UI
-            var s = new ServerInfo(name, ip, port, version)
+            var s = new ServerInfo(name, ip, port, version, dlg.ServerSoftware)
             {
                 RamMB = dlg.ServerRamMB,
                 PropertiesPath = string.Empty,
@@ -859,7 +862,7 @@ namespace MC_Server_Manager_3
             MessageBox.Show("Toggle Status Bar - not implemented yet.", "View", MessageBoxButtons.OK, MessageBoxIcon.Information);
 
         private void aboutToolStripMenuItem_Click(object sender, EventArgs e) =>
-            MessageBox.Show("Minecraft Server Manager 3\nVersion: 3.3\n© Ján Repka 2026", "About", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            MessageBox.Show("Minecraft Server Manager 3\nVersion: 3.4\n© Ján Repka 2026", "About", MessageBoxButtons.OK, MessageBoxIcon.Information);
 
         private void label1_Click(object sender, EventArgs e) { }
 
@@ -1846,6 +1849,7 @@ namespace MC_Server_Manager_3
             {
                 Name = s.Name,
                 Version = s.Version,
+                ServerSoftware = s.ServerSoftware,
                 Port = s.Port,
                 RamMB = s.RamMB,
                 PropertiesFileName = string.IsNullOrEmpty(s.PropertiesPath) ? string.Empty : Path.GetFileName(s.PropertiesPath),
