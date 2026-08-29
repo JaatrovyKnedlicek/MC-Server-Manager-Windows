@@ -44,6 +44,7 @@ namespace MC_Server_Manager_3
             cmbServerSoftware.Items.Clear();
             cmbServerSoftware.Items.Add("Paper");
             cmbServerSoftware.Items.Add("Purpur");
+            cmbServerSoftware.Items.Add("Spigot");
             cmbServerSoftware.SelectedIndex = 0;
         }
 
@@ -59,6 +60,10 @@ namespace MC_Server_Manager_3
             if (software == "Purpur")
             {
                 LoadPurpurVersions();
+            }
+            else if (software == "Spigot")
+            {
+                LoadSpigotVersions();
             }
             else
             {
@@ -175,7 +180,7 @@ namespace MC_Server_Manager_3
             // Show error message if API failed
             if (errorCode != null || versionUrls.Count == 0)
             {
-                var apiName = ServerSoftware == "Purpur" ? "Purpur" : "PaperMC";
+                var apiName = ServerSoftware == "Purpur" ? "Purpur" : (ServerSoftware == "Spigot" ? "Spigot" : "PaperMC");
                 var message = errorCode != null 
                     ? $"Failed to fetch the newest versions from the {apiName} API.\n\nError Code: {errorCode}\nError: {errorMessage}\n\nShowing locally stored versions instead."
                     : $"The {apiName} API returned no version data. Showing locally stored versions instead.";
@@ -265,9 +270,107 @@ namespace MC_Server_Manager_3
             // Show error message if API failed
             if (errorCode != null || versionUrls.Count == 0)
             {
+                var apiName = ServerSoftware == "Purpur" ? "Purpur" : (ServerSoftware == "Spigot" ? "Spigot" : "PaperMC");
                 var message = errorCode != null 
-                    ? $"Failed to fetch the newest versions from the Purpur API.\n\nError Code: {errorCode}\nError: {errorMessage}\n\nShowing locally stored versions instead."
-                    : "The Purpur API returned no version data. Showing locally stored versions instead.";
+                    ? $"Failed to fetch the newest versions from the {apiName} API.\n\nError Code: {errorCode}\nError: {errorMessage}\n\nShowing locally stored versions instead."
+                    : $"The {apiName} API returned no version data. Showing locally stored versions instead.";
+                
+                MessageBox.Show(
+                    message,
+                    "API Error",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning);
+                
+                // Fall back to embedded JSON
+                LoadVersionsFromEmbeddedJson(ref latestVersion);
+            }
+
+            // Populate combo with all versions
+            PopulateVersionDropdown(latestVersion);
+        }
+
+        private async void LoadSpigotVersions()
+        {
+            versionUrls.Clear();
+            string latestVersion = null;
+            string errorMessage = null;
+            string errorCode = null;
+
+            // Try to fetch from Spigot versions API
+            try
+            {
+                using var http = new HttpClient();
+                http.Timeout = TimeSpan.FromSeconds(10);
+                http.DefaultRequestHeaders.UserAgent.ParseAdd("MCServerManager/3.4");
+                var response = await http.GetAsync("https://hub.spigotmc.org/versions/");
+                
+                if (!response.IsSuccessStatusCode)
+                {
+                    errorCode = $"HTTP {(int)response.StatusCode}";
+                    errorMessage = response.ReasonPhrase ?? "Unknown HTTP error";
+                    System.Diagnostics.Debug.WriteLine($"Spigot API returned error status: {errorCode} - {errorMessage}");
+                }
+                else
+                {
+                    var htmlContent = await response.Content.ReadAsStringAsync();
+                    
+                    // Parse HTML to extract version links (pattern: href="1.21.11.json")
+                    var allVersions = new System.Collections.Generic.List<string>();
+                    var versionPattern = new System.Text.RegularExpressions.Regex(@"href=""(\d+\.\d+(?:\.\d+)?(?:-[a-zA-Z0-9]+)?)\.json""");
+                    
+                    foreach (System.Text.RegularExpressions.Match match in versionPattern.Matches(htmlContent))
+                    {
+                        var versionString = match.Groups[1].Value;
+                        if (!string.IsNullOrEmpty(versionString) && !allVersions.Contains(versionString))
+                        {
+                            allVersions.Add(versionString);
+                        }
+                    }
+
+                    // Get the latest version (first one after sorting)
+                    if (allVersions.Count > 0)
+                    {
+                        // Sort versions to get the latest
+                        allVersions.Sort((a, b) => CompareMinecraftVersions(a, b));
+                        allVersions.Reverse();
+                        latestVersion = allVersions[0];
+                    }
+
+                    // Build download URLs for each version using GetBukkit CDN
+                    foreach (var versionString in allVersions)
+                    {
+                        // Use the GetBukkit CDN for Spigot downloads
+                        var downloadUrl = $"https://cdn.getbukkit.org/spigot/spigot-{versionString}.jar";
+                        versionUrls[versionString] = downloadUrl;
+                    }
+                }
+            }
+            catch (HttpRequestException ex)
+            {
+                errorCode = "NETWORK_ERROR";
+                errorMessage = ex.Message;
+                System.Diagnostics.Debug.WriteLine($"HTTP request failed: {ex.Message}");
+            }
+            catch (TaskCanceledException ex) when (!ex.CancellationToken.IsCancellationRequested)
+            {
+                errorCode = "TIMEOUT_ERROR";
+                errorMessage = "Request timed out. The API did not respond within the expected time.";
+                System.Diagnostics.Debug.WriteLine($"Request timed out: {ex.Message}");
+            }
+            catch (Exception ex)
+            {
+                errorCode = "GENERAL_ERROR";
+                errorMessage = ex.Message;
+                System.Diagnostics.Debug.WriteLine($"Failed to fetch versions from Spigot API: {ex.Message}");
+            }
+
+            // Show error message if API failed
+            if (errorCode != null || versionUrls.Count == 0)
+            {
+                var apiName = ServerSoftware == "Purpur" ? "Purpur" : (ServerSoftware == "Spigot" ? "Spigot" : "PaperMC");
+                var message = errorCode != null 
+                    ? $"Failed to fetch the newest versions from the {apiName} API.\n\nError Code: {errorCode}\nError: {errorMessage}\n\nShowing locally stored versions instead."
+                    : $"The {apiName} API returned no version data. Showing locally stored versions instead.";
                 
                 MessageBox.Show(
                     message,
@@ -567,7 +670,7 @@ namespace MC_Server_Manager_3
             return folder;
         }
 
-        // When moving from step 0 to step 1 we create folder and download PaperMC JAR and mapped JDK (with progress dialog).
+        // When moving from step 0 to step 1 we create folder and download server JAR and mapped JDK (with progress dialog).
         private async void btnNext_Click(object? sender, EventArgs e)
         {
             if (stepIndex == 0)
@@ -610,14 +713,14 @@ namespace MC_Server_Manager_3
 
                 // download server jar into this folder as server.jar (generic name)
                 var destJar = Path.Combine(ServerFolderPath, "server.jar");
-                var ctsPaper = new CancellationTokenSource();
-                using (var progressDlg = new ProgressDialog(ctsPaper, $"Downloading {ServerSoftware} {version}..."))
+                var ctsServer = new CancellationTokenSource();
+                using (var progressDlg = new ProgressDialog(ctsServer, $"Downloading {ServerSoftware} {version}..."))
                 {
                     var progress = new Progress<int>(percent => progressDlg.SetProgress(percent));
                     try
                     {
                         progressDlg.Show(this);
-                        DownloadedJarPath = await DownloadPaperJarAsync(downloadUrl, destJar, progress, ctsPaper.Token);
+                        DownloadedJarPath = await DownloadServerJarAsync(downloadUrl, destJar, progress, ctsServer.Token);
                         if (string.IsNullOrEmpty(DownloadedJarPath) || !File.Exists(DownloadedJarPath))
                         {
                             MessageBox.Show($"{ServerSoftware} download failed.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
@@ -677,7 +780,7 @@ namespace MC_Server_Manager_3
                     var tmpZip = Path.Combine(Path.GetTempPath(), $"temurin-{javaMajor}.zip");
                     var tmpExtract = Path.Combine(Path.GetTempPath(), $"temurin-extract-{Guid.NewGuid():N}");
                     var ctsJdk = new CancellationTokenSource();
-                    using (var progressDlg = new ProgressDialog(ctsJdk))
+                    using (var progressDlg = new ProgressDialog(ctsJdk, $"Downloading JDK {javaMajor}..."))
                     {
                         var progress = new Progress<int>(percent => progressDlg.SetProgress(percent));
                         try
@@ -815,7 +918,7 @@ namespace MC_Server_Manager_3
             progress.Report(100);
         }
 
-        private async Task<string> DownloadPaperJarAsync(string url, string destination, IProgress<int> progress, CancellationToken ct)
+        private async Task<string> DownloadServerJarAsync(string url, string destination, IProgress<int> progress, CancellationToken ct)
         {
             // If file already exists, return it
             if (File.Exists(destination))
