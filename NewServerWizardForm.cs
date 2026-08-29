@@ -396,8 +396,8 @@ namespace MC_Server_Manager_3
             // Try parse as Version
             if (!Version.TryParse(mcVersion, out var v))
             {
-                // fallback: choose latest (Java 21)
-                return 21;
+                // fallback: choose latest (Java 25)
+                return 25;
             }
 
             // compare using Version, treat missing fields as 0
@@ -421,9 +421,26 @@ namespace MC_Server_Manager_3
                 return 21;
             }
 
-            // non-1.x versions (future-proof) -> Java 21
-            if (v.Major >= 2) return 21;
-            return 21;
+            // non-1.x versions (new versioning scheme)
+            if (v.Major >= 26)
+            {
+                // 26.1 and above -> Java 25
+                if (v.Major == 26 && v.Minor >= 1)
+                    return 25;
+                // 26.0 -> Java 21 (assuming 26.0 still uses Java 21)
+                if (v.Major == 26 && v.Minor == 0)
+                    return 21;
+                // 27+ -> Java 25 (future-proof)
+                if (v.Major >= 27)
+                    return 25;
+            }
+            
+            // 2.x - 25.x versions -> Java 21
+            if (v.Major >= 2 && v.Major <= 25)
+                return 21;
+            
+            // fallback for unknown future versions
+            return 25;
         }
 
         // helper to create a safe unique folder under app/servers
