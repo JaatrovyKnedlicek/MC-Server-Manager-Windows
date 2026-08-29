@@ -15,6 +15,9 @@ namespace MC_Server_Manager_3
             cmbServerSoftware = new System.Windows.Forms.ComboBox();
             lblPaperVersion = new System.Windows.Forms.Label();
             cmbVersions = new System.Windows.Forms.ComboBox();
+            loadingPanel = new System.Windows.Forms.Panel();
+            loadingLabel = new System.Windows.Forms.Label();
+            loadingProgressBar = new System.Windows.Forms.ProgressBar();
 
             panelStep2 = new System.Windows.Forms.Panel();
             lblJarNote = new System.Windows.Forms.Label();
@@ -45,6 +48,7 @@ namespace MC_Server_Manager_3
             panelStep1.Controls.Add(cmbServerSoftware);
             panelStep1.Controls.Add(lblPaperVersion);
             panelStep1.Controls.Add(cmbVersions);
+            panelStep1.Controls.Add(loadingPanel);
             panelStep1.Location = new System.Drawing.Point(12, 12);
             panelStep1.Name = "panelStep1";
             panelStep1.Size = new System.Drawing.Size(520, 150);
@@ -88,6 +92,28 @@ namespace MC_Server_Manager_3
             cmbVersions.Location = new System.Drawing.Point(10, 130);
             cmbVersions.Name = "cmbVersions";
             cmbVersions.Size = new System.Drawing.Size(240, 23);
+
+            // loadingPanel
+            loadingPanel.Controls.Add(loadingLabel);
+            loadingPanel.Controls.Add(loadingProgressBar);
+            loadingPanel.Location = new System.Drawing.Point(10, 60);
+            loadingPanel.Name = "loadingPanel";
+            loadingPanel.Size = new System.Drawing.Size(500, 60);
+            loadingPanel.Visible = false;
+            loadingPanel.SendToBack();
+
+            // loadingLabel
+            loadingLabel.AutoSize = true;
+            loadingLabel.Location = new System.Drawing.Point(10, 10);
+            loadingLabel.Name = "loadingLabel";
+            loadingLabel.Size = new System.Drawing.Size(120, 15);
+            loadingLabel.Text = "Loading versions...";
+
+            // loadingProgressBar
+            loadingProgressBar.Location = new System.Drawing.Point(10, 30);
+            loadingProgressBar.Name = "loadingProgressBar";
+            loadingProgressBar.Size = new System.Drawing.Size(480, 23);
+            loadingProgressBar.Style = System.Windows.Forms.ProgressBarStyle.Marquee;
 
             // panelStep2
             panelStep2.Controls.Add(lblJarNote);
@@ -227,6 +253,10 @@ namespace MC_Server_Manager_3
 
         private System.Windows.Forms.Label lblPaperVersion;
         private System.Windows.Forms.ComboBox cmbVersions;
+
+        private System.Windows.Forms.Panel loadingPanel;
+        private System.Windows.Forms.Label loadingLabel;
+        private System.Windows.Forms.ProgressBar loadingProgressBar;
 
         private System.Windows.Forms.Panel panelStep2;
         private System.Windows.Forms.Label lblJarNote;

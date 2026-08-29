@@ -55,28 +55,51 @@ namespace MC_Server_Manager_3
             LoadServerVersions();
         }
 
-        private void LoadServerVersions()
+        private async void LoadServerVersions()
         {
-            var software = cmbServerSoftware.SelectedItem?.ToString();
-            if (software == "Purpur")
+            // Show loading indicator
+            loadingPanel.Visible = true;
+            loadingPanel.BringToFront();
+            cmbServerSoftware.Enabled = false;
+            cmbVersions.Enabled = false;
+            lblName.Enabled = false;
+            txtName.Enabled = false;
+            lblPaperVersion.Enabled = false;
+
+            try
             {
-                LoadPurpurVersions();
+                var software = cmbServerSoftware.SelectedItem?.ToString();
+                if (software == "Purpur")
+                {
+                    await LoadPurpurVersionsAsync();
+                }
+                else if (software == "Spigot")
+                {
+                    await LoadSpigotVersionsAsync();
+                }
+                else if (software == "Vanilla")
+                {
+                    await LoadVanillaVersionsAsync();
+                }
+                else
+                {
+                    await LoadPaperVersionsAsync();
+                }
             }
-            else if (software == "Spigot")
+            finally
             {
-                LoadSpigotVersions();
-            }
-            else if (software == "Vanilla")
-            {
-                LoadVanillaVersions();
-            }
-            else
-            {
-                LoadPaperVersions();
+                // Hide loading indicator
+                loadingPanel.Visible = false;
+                loadingPanel.SendToBack();
+                cmbServerSoftware.Enabled = true;
+                cmbVersions.Enabled = true;
+                lblName.Enabled = true;
+                txtName.Enabled = true;
+                lblPaperVersion.Enabled = true;
             }
         }
 
-        private async void LoadPaperVersions()
+        private async Task LoadPaperVersionsAsync()
         {
             versionUrls.Clear();
             string latestVersion = null;
@@ -88,7 +111,7 @@ namespace MC_Server_Manager_3
             {
                 using var http = new HttpClient();
                 http.Timeout = TimeSpan.FromSeconds(10);
-                http.DefaultRequestHeaders.UserAgent.ParseAdd("MCServerManager/3.2");
+                http.DefaultRequestHeaders.UserAgent.ParseAdd("MCServerManager/3.4");
                 var response = await http.GetAsync("https://fill.papermc.io/v3/projects/paper");
                 
                 if (!response.IsSuccessStatusCode)
@@ -204,7 +227,7 @@ namespace MC_Server_Manager_3
             PopulateVersionDropdown(latestVersion);
         }
 
-        private async void LoadPurpurVersions()
+        private async Task LoadPurpurVersionsAsync()
         {
             versionUrls.Clear();
             string latestVersion = null;
@@ -294,7 +317,7 @@ namespace MC_Server_Manager_3
             PopulateVersionDropdown(latestVersion);
         }
 
-        private async void LoadSpigotVersions()
+        private async Task LoadSpigotVersionsAsync()
         {
             versionUrls.Clear();
             string latestVersion = null;
@@ -391,7 +414,7 @@ namespace MC_Server_Manager_3
             PopulateVersionDropdown(latestVersion);
         }
 
-        private async void LoadVanillaVersions()
+        private async Task LoadVanillaVersionsAsync()
         {
             versionUrls.Clear();
             string latestVersion = null;
@@ -1005,7 +1028,7 @@ namespace MC_Server_Manager_3
         private async Task<string> ResolveTemurinBinaryUrlAsync(int javaMajor)
         {
             using var http = new HttpClient();
-            http.DefaultRequestHeaders.UserAgent.ParseAdd("MCServerManager/3.2 (https://github.com/JaatrovyKnedlicek/MC-Server-Manager-Windows)");
+            http.DefaultRequestHeaders.UserAgent.ParseAdd("MCServerManager/3.4 (https://github.com/JaatrovyKnedlicek/MC-Server-Manager-Windows)");
             // Query assets; we ask for jdk windows x64
             var api = $"https://api.adoptium.net/v3/assets/feature_releases/{javaMajor}/ga?architecture=x64&os=windows&image_type=jdk&vendor=adoptium";
             var json = await http.GetStringAsync(api);
@@ -1049,7 +1072,7 @@ namespace MC_Server_Manager_3
         private async Task DownloadFileWithProgressAsync(string url, string destination, IProgress<int> progress, CancellationToken ct)
         {
             using var http = new HttpClient();
-            http.DefaultRequestHeaders.UserAgent.ParseAdd("MCServerManager/3.2 (https://github.com/JaatrovyKnedlicek/MC-Server-Manager-Windows)");
+            http.DefaultRequestHeaders.UserAgent.ParseAdd("MCServerManager/3.4 (https://github.com/JaatrovyKnedlicek/MC-Server-Manager-Windows)");
             using var resp = await http.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, ct);
             resp.EnsureSuccessStatusCode();
 
