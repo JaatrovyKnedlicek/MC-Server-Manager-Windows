@@ -11,6 +11,8 @@ namespace MC_Server_Manager_3
             panelStep1 = new System.Windows.Forms.Panel();
             lblName = new System.Windows.Forms.Label();
             txtName = new System.Windows.Forms.TextBox();
+            lblServerSoftware = new System.Windows.Forms.Label();
+            cmbServerSoftware = new System.Windows.Forms.ComboBox();
             lblPaperVersion = new System.Windows.Forms.Label();
             cmbVersions = new System.Windows.Forms.ComboBox();
 
@@ -39,11 +41,13 @@ namespace MC_Server_Manager_3
             // panelStep1
             panelStep1.Controls.Add(lblName);
             panelStep1.Controls.Add(txtName);
+            panelStep1.Controls.Add(lblServerSoftware);
+            panelStep1.Controls.Add(cmbServerSoftware);
             panelStep1.Controls.Add(lblPaperVersion);
             panelStep1.Controls.Add(cmbVersions);
             panelStep1.Location = new System.Drawing.Point(12, 12);
             panelStep1.Name = "panelStep1";
-            panelStep1.Size = new System.Drawing.Size(520, 120);
+            panelStep1.Size = new System.Drawing.Size(520, 150);
             panelStep1.TabIndex = 0;
 
             // lblName
@@ -58,16 +62,30 @@ namespace MC_Server_Manager_3
             txtName.Name = "txtName";
             txtName.Size = new System.Drawing.Size(480, 23);
 
+            // lblServerSoftware
+            lblServerSoftware.AutoSize = true;
+            lblServerSoftware.Location = new System.Drawing.Point(10, 66);
+            lblServerSoftware.Name = "lblServerSoftware";
+            lblServerSoftware.Size = new System.Drawing.Size(110, 15);
+            lblServerSoftware.Text = "Server Software:";
+
+            // cmbServerSoftware
+            cmbServerSoftware.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            cmbServerSoftware.Location = new System.Drawing.Point(10, 84);
+            cmbServerSoftware.Name = "cmbServerSoftware";
+            cmbServerSoftware.Size = new System.Drawing.Size(240, 23);
+            cmbServerSoftware.SelectedIndexChanged += cmbServerSoftware_SelectedIndexChanged;
+
             // lblPaperVersion
             lblPaperVersion.AutoSize = true;
-            lblPaperVersion.Location = new System.Drawing.Point(10, 66);
+            lblPaperVersion.Location = new System.Drawing.Point(10, 112);
             lblPaperVersion.Name = "lblPaperVersion";
             lblPaperVersion.Size = new System.Drawing.Size(110, 15);
-            lblPaperVersion.Text = "PaperMC Version:";
+            lblPaperVersion.Text = "Version:";
 
             // cmbVersions
             cmbVersions.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-            cmbVersions.Location = new System.Drawing.Point(10, 84);
+            cmbVersions.Location = new System.Drawing.Point(10, 130);
             cmbVersions.Name = "cmbVersions";
             cmbVersions.Size = new System.Drawing.Size(240, 23);
 
@@ -90,7 +108,7 @@ namespace MC_Server_Manager_3
             lblJarNote.Location = new System.Drawing.Point(10, 10);
             lblJarNote.Name = "lblJarNote";
             lblJarNote.Size = new System.Drawing.Size(360, 15);
-            lblJarNote.Text = "The selected PaperMC JAR will be downloaded now (one-time).";
+            lblJarNote.Text = "The selected server JAR will be downloaded now (one-time).";
 
             // lblRam
             lblRam.AutoSize = true;
@@ -203,6 +221,9 @@ namespace MC_Server_Manager_3
         private System.Windows.Forms.Panel panelStep1;
         private System.Windows.Forms.Label lblName;
         private System.Windows.Forms.TextBox txtName;
+
+        private System.Windows.Forms.Label lblServerSoftware;
+        private System.Windows.Forms.ComboBox cmbServerSoftware;
 
         private System.Windows.Forms.Label lblPaperVersion;
         private System.Windows.Forms.ComboBox cmbVersions;

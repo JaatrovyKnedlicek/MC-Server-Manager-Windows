@@ -16,12 +16,13 @@ namespace MC_Server_Manager_3
         private int stepIndex = 0; // 0..2
 
         public string ServerName => txtName.Text.Trim();
+        public string ServerSoftware => cmbServerSoftware.SelectedItem?.ToString() ?? string.Empty;
         public string ServerVersion => cmbVersions.SelectedItem?.ToString() ?? string.Empty;
         public int ServerRamMB => (int)numRam.Value;
         public bool EulaAccepted => chkEulaAccept.Checked;
 
-        // map of version -> download url loaded from paper-versions.json
-        private System.Collections.Generic.Dictionary<string, string> paperVersions = new();
+        // map of version -> download url
+        private System.Collections.Generic.Dictionary<string, string> versionUrls = new();
 
         // path of downloaded jar (in the server folder)
         public string DownloadedJarPath { get; private set; } = string.Empty;
@@ -32,15 +33,155 @@ namespace MC_Server_Manager_3
         public NewServerWizardForm()
         {
             InitializeComponent();
+            InitializeServerSoftwareDropdown();
             LoadPaperVersions();
             UpdateRamLimitsAndPresets();
             UpdateStep();
         }
 
-        private void LoadPaperVersions()
+        private void InitializeServerSoftwareDropdown()
         {
-            paperVersions.Clear();
+            cmbServerSoftware.Items.Clear();
+            cmbServerSoftware.Items.Add("Paper");
+            cmbServerSoftware.SelectedIndex = 0;
+        }
+
+        private void cmbServerSoftware_SelectedIndexChanged(object? sender, EventArgs e)
+        {
+            // Reload versions when server software changes
+            LoadPaperVersions();
+        }
+
+        private async void LoadPaperVersions()
+        {
+            versionUrls.Clear();
             string latestVersion = null;
+            string errorMessage = null;
+            string errorCode = null;
+
+            // Try to fetch from PaperMC Fill v3 API first
+            try
+            {
+                using var http = new HttpClient();
+                http.Timeout = TimeSpan.FromSeconds(10);
+                http.DefaultRequestHeaders.UserAgent.ParseAdd("MCServerManager/3.2");
+                var response = await http.GetAsync("https://fill.papermc.io/v3/projects/paper");
+                
+                if (!response.IsSuccessStatusCode)
+                {
+                    errorCode = $"HTTP {(int)response.StatusCode}";
+                    errorMessage = response.ReasonPhrase ?? "Unknown HTTP error";
+                    System.Diagnostics.Debug.WriteLine($"PaperMC API returned error status: {errorCode} - {errorMessage}");
+                }
+                else
+                {
+                    var apiResponse = await response.Content.ReadAsStringAsync();
+                    using var doc = JsonDocument.Parse(apiResponse);
+
+                    // Fill v3 API has "versions" as an object mapping version groups to version strings
+                    if (doc.RootElement.TryGetProperty("versions", out var versionsObj))
+                    {
+                        // Flatten all version strings from all groups
+                        var allVersions = new System.Collections.Generic.List<string>();
+                        
+                        foreach (var versionGroup in versionsObj.EnumerateObject())
+                        {
+                            foreach (var version in versionGroup.Value.EnumerateArray())
+                            {
+                                var versionString = version.GetString();
+                                if (!string.IsNullOrEmpty(versionString) && !allVersions.Contains(versionString))
+                                {
+                                    allVersions.Add(versionString);
+                                }
+                            }
+                        }
+
+                        // Get the latest version (first one after sorting)
+                        if (allVersions.Count > 0)
+                        {
+                            // Sort versions to get the latest
+                            allVersions.Sort((a, b) => CompareMinecraftVersions(a, b));
+                            allVersions.Reverse();
+                            latestVersion = allVersions[0];
+                        }
+
+                        // Build download URLs for each version using Fill v3 API format
+                        foreach (var versionString in allVersions)
+                        {
+                            // Use the Fill v3 API to get the latest build for each version
+                            try
+                            {
+                                var buildResponse = await http.GetAsync($"https://fill.papermc.io/v3/projects/paper/versions/{versionString}/builds/latest");
+                                if (buildResponse.IsSuccessStatusCode)
+                                {
+                                    var buildData = await buildResponse.Content.ReadAsStringAsync();
+                                    using var buildDoc = JsonDocument.Parse(buildData);
+                                    
+                                    // Extract download URL from the response
+                                    if (buildDoc.RootElement.TryGetProperty("downloads", out var downloads) &&
+                                        downloads.TryGetProperty("server:default", out var serverDownload) &&
+                                        serverDownload.TryGetProperty("url", out var urlElement))
+                                    {
+                                        var downloadUrl = urlElement.GetString();
+                                        if (!string.IsNullOrEmpty(downloadUrl))
+                                        {
+                                            versionUrls[versionString] = downloadUrl;
+                                        }
+                                    }
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                System.Diagnostics.Debug.WriteLine($"Failed to get build URL for version {versionString}: {ex.Message}");
+                                // Skip this version if we can't get its download URL
+                            }
+                        }
+                    }
+                }
+            }
+            catch (HttpRequestException ex)
+            {
+                errorCode = "NETWORK_ERROR";
+                errorMessage = ex.Message;
+                System.Diagnostics.Debug.WriteLine($"HTTP request failed: {ex.Message}");
+            }
+            catch (TaskCanceledException ex) when (!ex.CancellationToken.IsCancellationRequested)
+            {
+                errorCode = "TIMEOUT_ERROR";
+                errorMessage = "Request timed out. The API did not respond within the expected time.";
+                System.Diagnostics.Debug.WriteLine($"Request timed out: {ex.Message}");
+            }
+            catch (Exception ex)
+            {
+                errorCode = "GENERAL_ERROR";
+                errorMessage = ex.Message;
+                System.Diagnostics.Debug.WriteLine($"Failed to fetch versions from PaperMC API: {ex.Message}");
+            }
+
+            // Show error message if API failed
+            if (errorCode != null || versionUrls.Count == 0)
+            {
+                var message = errorCode != null 
+                    ? $"Failed to fetch the newest versions from the PaperMC API.\n\nError Code: {errorCode}\nError: {errorMessage}\n\nShowing locally stored versions instead."
+                    : "The PaperMC API returned no version data. Showing locally stored versions instead.";
+                
+                MessageBox.Show(
+                    message,
+                    "API Error",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning);
+                
+                // Fall back to embedded JSON
+                LoadVersionsFromEmbeddedJson(ref latestVersion);
+            }
+
+            // Populate combo with all versions
+            PopulateVersionDropdown(latestVersion);
+        }
+
+        private void LoadVersionsFromEmbeddedJson(ref string latestVersion)
+        {
+            versionUrls.Clear();
 
             // Read from embedded resource
             var assembly = System.Reflection.Assembly.GetExecutingAssembly();
@@ -62,7 +203,7 @@ namespace MC_Server_Manager_3
                         {
                             var key = prop.Name;
                             var value = prop.Value.GetString() ?? string.Empty;
-                            paperVersions[key] = value;
+                            versionUrls[key] = value;
                         }
                     }
                 }
@@ -74,19 +215,22 @@ namespace MC_Server_Manager_3
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"Failed to load embedded paper-versions.json: {ex.Message}");
-                paperVersions.Clear();
+                versionUrls.Clear();
             }
+        }
 
+        private void PopulateVersionDropdown(string latestVersion)
+        {
             // fallback if empty
-            if (paperVersions.Count == 0)
+            if (versionUrls.Count == 0)
             {
-                paperVersions["1.20.2"] = "https://fill-data.papermc.io/v1/objects/ba340a835ac40b8563aa7eda1cd6479a11a7623409c89a2c35cd9d7490ed17a7/paper-1.20.2-318.jar";
+                versionUrls["1.20.2"] = "https://fill-data.papermc.io/v1/objects/ba340a835ac40b8563aa7eda1cd6479a11a7623409c89a2c35cd9d7490ed17a7/paper-1.20.2-318.jar";
             }
 
             // populate combo with all versions
             cmbVersions.Items.Clear();
 
-            var keys = paperVersions.Keys.ToList();
+            var keys = versionUrls.Keys.ToList();
 
             // Semantic sort: newest -> oldest
             // If JSON contains "latest", keep it first, then semantic-sort the rest descending.
@@ -239,7 +383,8 @@ namespace MC_Server_Manager_3
             {
                 lblSummary.Text =
                     $"Name: {ServerName}\r\n" +
-                    $"PaperMC Version: {ServerVersion}\r\n" +
+                    $"Server Software: {ServerSoftware}\r\n" +
+                    $"Version: {ServerVersion}\r\n" +
                     $"RAM: {ServerRamMB} MB\r\n" +
                     $"\r\nNote: The server JAR and a JDK were downloaded. A start.cmd was generated to launch the server using the bundled JDK.";
             }
@@ -312,16 +457,22 @@ namespace MC_Server_Manager_3
                     return;
                 }
 
+                if (cmbServerSoftware.SelectedItem == null)
+                {
+                    MessageBox.Show("Please select a server software.", "Validation", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+
                 if (cmbVersions.SelectedItem == null)
                 {
-                    MessageBox.Show("Please select a PaperMC version.", "Validation", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    MessageBox.Show("Please select a version.", "Validation", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     return;
                 }
 
                 var version = cmbVersions.SelectedItem!.ToString()!;
-                if (!paperVersions.TryGetValue(version, out var paperUrl) || string.IsNullOrWhiteSpace(paperUrl))
+                if (!versionUrls.TryGetValue(version, out var downloadUrl) || string.IsNullOrWhiteSpace(downloadUrl))
                 {
-                    MessageBox.Show("Download URL not available for selected PaperMC version.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    MessageBox.Show("Download URL not available for selected version.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     return;
                 }
 
@@ -336,19 +487,19 @@ namespace MC_Server_Manager_3
                     return;
                 }
 
-                // download PaperMC into this folder as paper.jar
+                // download server jar into this folder as paper.jar
                 var destJar = Path.Combine(ServerFolderPath, "paper.jar");
                 var ctsPaper = new CancellationTokenSource();
-                using (var progressDlg = new ProgressDialog(ctsPaper, $"Downloading PaperMC {version}..."))
+                using (var progressDlg = new ProgressDialog(ctsPaper, $"Downloading {ServerSoftware} {version}..."))
                 {
                     var progress = new Progress<int>(percent => progressDlg.SetProgress(percent));
                     try
                     {
                         progressDlg.Show(this);
-                        DownloadedJarPath = await DownloadPaperJarAsync(paperUrl, destJar, progress, ctsPaper.Token);
+                        DownloadedJarPath = await DownloadPaperJarAsync(downloadUrl, destJar, progress, ctsPaper.Token);
                         if (string.IsNullOrEmpty(DownloadedJarPath) || !File.Exists(DownloadedJarPath))
                         {
-                            MessageBox.Show("PaperMC download failed.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                            MessageBox.Show($"{ServerSoftware} download failed.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                             try { Directory.Delete(ServerFolderPath, true); } catch { }
                             ServerFolderPath = string.Empty;
                             return;
@@ -356,14 +507,14 @@ namespace MC_Server_Manager_3
                     }
                     catch (OperationCanceledException)
                     {
-                        MessageBox.Show("PaperMC download cancelled.", "Info", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        MessageBox.Show($"{ServerSoftware} download cancelled.", "Info", MessageBoxButtons.OK, MessageBoxIcon.Information);
                         try { Directory.Delete(ServerFolderPath, true); } catch { }
                         ServerFolderPath = string.Empty;
                         return;
                     }
                     catch (Exception ex)
                     {
-                        MessageBox.Show($"Failed to download PaperMC: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        MessageBox.Show($"Failed to download {ServerSoftware}: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                         try { Directory.Delete(ServerFolderPath, true); } catch { }
                         ServerFolderPath = string.Empty;
                         return;
@@ -469,6 +620,7 @@ namespace MC_Server_Manager_3
         private async Task<string> ResolveTemurinBinaryUrlAsync(int javaMajor)
         {
             using var http = new HttpClient();
+            http.DefaultRequestHeaders.UserAgent.ParseAdd("MCServerManager/3.2 (https://github.com/JaatrovyKnedlicek/MC-Server-Manager-Windows)");
             // Query assets; we ask for jdk windows x64
             var api = $"https://api.adoptium.net/v3/assets/feature_releases/{javaMajor}/ga?architecture=x64&os=windows&image_type=jdk&vendor=adoptium";
             var json = await http.GetStringAsync(api);
@@ -512,6 +664,7 @@ namespace MC_Server_Manager_3
         private async Task DownloadFileWithProgressAsync(string url, string destination, IProgress<int> progress, CancellationToken ct)
         {
             using var http = new HttpClient();
+            http.DefaultRequestHeaders.UserAgent.ParseAdd("MCServerManager/3.2 (https://github.com/JaatrovyKnedlicek/MC-Server-Manager-Windows)");
             using var resp = await http.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, ct);
             resp.EnsureSuccessStatusCode();
 

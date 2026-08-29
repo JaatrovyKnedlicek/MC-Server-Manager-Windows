@@ -672,6 +672,7 @@ namespace MC_Server_Manager_3
             {
                 using var http = new HttpClient();
                 http.Timeout = TimeSpan.FromSeconds(5);
+                http.DefaultRequestHeaders.UserAgent.ParseAdd("MCServerManager/3.2 (https://github.com/JaatrovyKnedlicek/MC-Server-Manager-Windows)");
                 var ip = (await http.GetStringAsync("https://api.ipify.org")).Trim();
                 if (string.IsNullOrEmpty(ip)) ip = "N/A";
                 cachedPublicIp = ip;
@@ -1420,6 +1421,7 @@ namespace MC_Server_Manager_3
             try
             {
                 using var httpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(5) };
+                httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("MCServerManager/3.2 (https://github.com/JaatrovyKnedlicek/MC-Server-Manager-Windows)");
                 var response = await httpClient.GetAsync($"https://api.mcsrvstat.us/2/{publicIp}:{port}");
                 if (response.IsSuccessStatusCode)
                 {
@@ -1574,6 +1576,7 @@ namespace MC_Server_Manager_3
             try
             {
                 using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(10) };
+                http.DefaultRequestHeaders.UserAgent.ParseAdd("MCServerManager/3.2 (https://github.com/JaatrovyKnedlicek/MC-Server-Manager-Windows)");
                 var payload = new
                 {
                     username = "MC Server Manager",
@@ -1729,6 +1732,7 @@ namespace MC_Server_Manager_3
             {
                 using var http = new HttpClient();
                 http.Timeout = TimeSpan.FromSeconds(5);
+                http.DefaultRequestHeaders.UserAgent.ParseAdd("MCServerManager/3.2 (https://github.com/JaatrovyKnedlicek/MC-Server-Manager-Windows)");
                 var ip = (await http.GetStringAsync("https://api.ipify.org")).Trim();
                 if (!string.IsNullOrEmpty(ip))
                     cachedPublicIp = ip;
