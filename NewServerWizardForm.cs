@@ -45,6 +45,7 @@ namespace MC_Server_Manager_3
             cmbServerSoftware.Items.Add("Paper");
             cmbServerSoftware.Items.Add("Purpur");
             cmbServerSoftware.Items.Add("Spigot");
+            cmbServerSoftware.Items.Add("Vanilla");
             cmbServerSoftware.SelectedIndex = 0;
         }
 
@@ -64,6 +65,10 @@ namespace MC_Server_Manager_3
             else if (software == "Spigot")
             {
                 LoadSpigotVersions();
+            }
+            else if (software == "Vanilla")
+            {
+                LoadVanillaVersions();
             }
             else
             {
@@ -180,7 +185,7 @@ namespace MC_Server_Manager_3
             // Show error message if API failed
             if (errorCode != null || versionUrls.Count == 0)
             {
-                var apiName = ServerSoftware == "Purpur" ? "Purpur" : (ServerSoftware == "Spigot" ? "Spigot" : "PaperMC");
+                var apiName = ServerSoftware == "Purpur" ? "Purpur" : (ServerSoftware == "Spigot" ? "Spigot" : (ServerSoftware == "Vanilla" ? "Mojang" : "PaperMC"));
                 var message = errorCode != null 
                     ? $"Failed to fetch the newest versions from the {apiName} API.\n\nError Code: {errorCode}\nError: {errorMessage}\n\nShowing locally stored versions instead."
                     : $"The {apiName} API returned no version data. Showing locally stored versions instead.";
@@ -270,7 +275,7 @@ namespace MC_Server_Manager_3
             // Show error message if API failed
             if (errorCode != null || versionUrls.Count == 0)
             {
-                var apiName = ServerSoftware == "Purpur" ? "Purpur" : (ServerSoftware == "Spigot" ? "Spigot" : "PaperMC");
+                var apiName = ServerSoftware == "Purpur" ? "Purpur" : (ServerSoftware == "Spigot" ? "Spigot" : (ServerSoftware == "Vanilla" ? "Mojang" : "PaperMC"));
                 var message = errorCode != null 
                     ? $"Failed to fetch the newest versions from the {apiName} API.\n\nError Code: {errorCode}\nError: {errorMessage}\n\nShowing locally stored versions instead."
                     : $"The {apiName} API returned no version data. Showing locally stored versions instead.";
@@ -367,7 +372,163 @@ namespace MC_Server_Manager_3
             // Show error message if API failed
             if (errorCode != null || versionUrls.Count == 0)
             {
-                var apiName = ServerSoftware == "Purpur" ? "Purpur" : (ServerSoftware == "Spigot" ? "Spigot" : "PaperMC");
+                var apiName = ServerSoftware == "Purpur" ? "Purpur" : (ServerSoftware == "Spigot" ? "Spigot" : (ServerSoftware == "Vanilla" ? "Mojang" : "PaperMC"));
+                var message = errorCode != null 
+                    ? $"Failed to fetch the newest versions from the {apiName} API.\n\nError Code: {errorCode}\nError: {errorMessage}\n\nShowing locally stored versions instead."
+                    : $"The {apiName} API returned no version data. Showing locally stored versions instead.";
+                
+                MessageBox.Show(
+                    message,
+                    "API Error",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning);
+                
+                // Fall back to embedded JSON
+                LoadVersionsFromEmbeddedJson(ref latestVersion);
+            }
+
+            // Populate combo with all versions
+            PopulateVersionDropdown(latestVersion);
+        }
+
+        private async void LoadVanillaVersions()
+        {
+            versionUrls.Clear();
+            string latestVersion = null;
+            string errorMessage = null;
+            string errorCode = null;
+
+            // Try to fetch from Mojang version manifest API
+            try
+            {
+                using var http = new HttpClient();
+                http.Timeout = TimeSpan.FromSeconds(10);
+                http.DefaultRequestHeaders.UserAgent.ParseAdd("MCServerManager/3.4");
+                var response = await http.GetAsync("https://launchermeta.mojang.com/mc/game/version_manifest.json");
+                
+                if (!response.IsSuccessStatusCode)
+                {
+                    errorCode = $"HTTP {(int)response.StatusCode}";
+                    errorMessage = response.ReasonPhrase ?? "Unknown HTTP error";
+                    System.Diagnostics.Debug.WriteLine($"Mojang API returned error status: {errorCode} - {errorMessage}");
+                }
+                else
+                {
+                    var apiResponse = await response.Content.ReadAsStringAsync();
+                    using var doc = JsonDocument.Parse(apiResponse);
+
+                    // Get the latest release version
+                    if (doc.RootElement.TryGetProperty("latest", out var latest) &&
+                        latest.TryGetProperty("release", out var latestRelease))
+                    {
+                        latestVersion = latestRelease.GetString();
+                    }
+
+                    // Get all versions
+                    if (doc.RootElement.TryGetProperty("versions", out var versions))
+                    {
+                        var allVersions = new System.Collections.Generic.List<string>();
+                        
+                        // Collect all release versions (filter out snapshots for cleaner list)
+                        foreach (var version in versions.EnumerateArray())
+                        {
+                            if (version.TryGetProperty("type", out var type) && 
+                                type.GetString() == "release" &&
+                                version.TryGetProperty("id", out var id))
+                            {
+                                var versionString = id.GetString();
+                                if (!string.IsNullOrEmpty(versionString) && !allVersions.Contains(versionString))
+                                {
+                                    allVersions.Add(versionString);
+                                }
+                            }
+                        }
+
+                        // Sort versions to get the latest
+                        if (allVersions.Count > 0)
+                        {
+                            allVersions.Sort((a, b) => CompareMinecraftVersions(a, b));
+                            allVersions.Reverse();
+                            // Update latestVersion to be the first in sorted list
+                            if (allVersions.Count > 0)
+                            {
+                                latestVersion = allVersions[0];
+                            }
+                        }
+
+                        // Build download URLs for each version by fetching version metadata
+                        foreach (var versionString in allVersions)
+                        {
+                            try
+                            {
+                                // Find the version in the manifest to get its metadata URL
+                                string versionUrl = null;
+                                foreach (var version in versions.EnumerateArray())
+                                {
+                                    if (version.TryGetProperty("id", out var id) && 
+                                        id.GetString() == versionString &&
+                                        version.TryGetProperty("url", out var url))
+                                    {
+                                        versionUrl = url.GetString();
+                                        break;
+                                    }
+                                }
+
+                                if (!string.IsNullOrEmpty(versionUrl))
+                                {
+                                    // Fetch version metadata to get server download URL
+                                    var versionResponse = await http.GetAsync(versionUrl);
+                                    if (versionResponse.IsSuccessStatusCode)
+                                    {
+                                        var versionData = await versionResponse.Content.ReadAsStringAsync();
+                                        using var versionDoc = JsonDocument.Parse(versionData);
+                                        
+                                        // Extract server download URL
+                                        if (versionDoc.RootElement.TryGetProperty("downloads", out var downloads) &&
+                                            downloads.TryGetProperty("server", out var server) &&
+                                            server.TryGetProperty("url", out var serverUrl))
+                                        {
+                                            var downloadUrl = serverUrl.GetString();
+                                            if (!string.IsNullOrEmpty(downloadUrl))
+                                            {
+                                                versionUrls[versionString] = downloadUrl;
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                System.Diagnostics.Debug.WriteLine($"Failed to get download URL for vanilla version {versionString}: {ex.Message}");
+                                // Skip this version if we can't get its download URL
+                            }
+                        }
+                    }
+                }
+            }
+            catch (HttpRequestException ex)
+            {
+                errorCode = "NETWORK_ERROR";
+                errorMessage = ex.Message;
+                System.Diagnostics.Debug.WriteLine($"HTTP request failed: {ex.Message}");
+            }
+            catch (TaskCanceledException ex) when (!ex.CancellationToken.IsCancellationRequested)
+            {
+                errorCode = "TIMEOUT_ERROR";
+                errorMessage = "Request timed out. The API did not respond within the expected time.";
+                System.Diagnostics.Debug.WriteLine($"Request timed out: {ex.Message}");
+            }
+            catch (Exception ex)
+            {
+                errorCode = "GENERAL_ERROR";
+                errorMessage = ex.Message;
+                System.Diagnostics.Debug.WriteLine($"Failed to fetch versions from Mojang API: {ex.Message}");
+            }
+
+            // Show error message if API failed
+            if (errorCode != null || versionUrls.Count == 0)
+            {
+                var apiName = ServerSoftware == "Purpur" ? "Purpur" : (ServerSoftware == "Spigot" ? "Spigot" : (ServerSoftware == "Vanilla" ? "Mojang" : "PaperMC"));
                 var message = errorCode != null 
                     ? $"Failed to fetch the newest versions from the {apiName} API.\n\nError Code: {errorCode}\nError: {errorMessage}\n\nShowing locally stored versions instead."
                     : $"The {apiName} API returned no version data. Showing locally stored versions instead.";
