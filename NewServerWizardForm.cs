@@ -44,6 +44,7 @@ namespace MC_Server_Manager_3
             cmbServerSoftware.Items.Clear();
             cmbServerSoftware.Items.Add("Paper");
             cmbServerSoftware.Items.Add("Purpur");
+            cmbServerSoftware.Items.Add("Fabric");
             cmbServerSoftware.Items.Add("Spigot");
             cmbServerSoftware.Items.Add("Vanilla");
             cmbServerSoftware.SelectedIndex = 0;
@@ -72,6 +73,10 @@ namespace MC_Server_Manager_3
                 if (software == "Purpur")
                 {
                     await LoadPurpurVersionsAsync();
+                }
+                else if (software == "Fabric")
+                {
+                    await LoadFabricVersionsAsync();
                 }
                 else if (software == "Spigot")
                 {
@@ -208,10 +213,15 @@ namespace MC_Server_Manager_3
             // Show error message if API failed
             if (errorCode != null || versionUrls.Count == 0)
             {
-                var apiName = ServerSoftware == "Purpur" ? "Purpur" : (ServerSoftware == "Spigot" ? "Spigot" : (ServerSoftware == "Vanilla" ? "Mojang" : "PaperMC"));
-                var message = errorCode != null 
-                    ? $"Failed to fetch the newest versions from the {apiName} API.\n\nError Code: {errorCode}\nError: {errorMessage}\n\nShowing locally stored versions instead."
-                    : $"The {apiName} API returned no version data. Showing locally stored versions instead.";
+                var apiName = ServerSoftware == "Purpur" ? "Purpur" : (ServerSoftware == "Fabric" ? "Fabric" : (ServerSoftware == "Spigot" ? "Spigot" : (ServerSoftware == "Vanilla" ? "Mojang" : "PaperMC")));
+                // If no error code but no versions, set a specific error code
+                if (errorCode == null && versionUrls.Count == 0)
+                {
+                    errorCode = "NO_DATA";
+                    errorMessage = "API returned no version data";
+                }
+                
+                var message = $"Failed to fetch the newest versions from the {apiName} API.\n\nError Code: {errorCode}\nError: {errorMessage}\n\nShowing locally stored versions instead.";
                 
                 MessageBox.Show(
                     message,
@@ -298,10 +308,15 @@ namespace MC_Server_Manager_3
             // Show error message if API failed
             if (errorCode != null || versionUrls.Count == 0)
             {
-                var apiName = ServerSoftware == "Purpur" ? "Purpur" : (ServerSoftware == "Spigot" ? "Spigot" : (ServerSoftware == "Vanilla" ? "Mojang" : "PaperMC"));
-                var message = errorCode != null 
-                    ? $"Failed to fetch the newest versions from the {apiName} API.\n\nError Code: {errorCode}\nError: {errorMessage}\n\nShowing locally stored versions instead."
-                    : $"The {apiName} API returned no version data. Showing locally stored versions instead.";
+                var apiName = ServerSoftware == "Purpur" ? "Purpur" : (ServerSoftware == "Fabric" ? "Fabric" : (ServerSoftware == "Spigot" ? "Spigot" : (ServerSoftware == "Vanilla" ? "Mojang" : "PaperMC")));
+                // If no error code but no versions, set a specific error code
+                if (errorCode == null && versionUrls.Count == 0)
+                {
+                    errorCode = "NO_DATA";
+                    errorMessage = "API returned no version data";
+                }
+                
+                var message = $"Failed to fetch the newest versions from the {apiName} API.\n\nError Code: {errorCode}\nError: {errorMessage}\n\nShowing locally stored versions instead.";
                 
                 MessageBox.Show(
                     message,
@@ -395,10 +410,15 @@ namespace MC_Server_Manager_3
             // Show error message if API failed
             if (errorCode != null || versionUrls.Count == 0)
             {
-                var apiName = ServerSoftware == "Purpur" ? "Purpur" : (ServerSoftware == "Spigot" ? "Spigot" : (ServerSoftware == "Vanilla" ? "Mojang" : "PaperMC"));
-                var message = errorCode != null 
-                    ? $"Failed to fetch the newest versions from the {apiName} API.\n\nError Code: {errorCode}\nError: {errorMessage}\n\nShowing locally stored versions instead."
-                    : $"The {apiName} API returned no version data. Showing locally stored versions instead.";
+                var apiName = ServerSoftware == "Purpur" ? "Purpur" : (ServerSoftware == "Fabric" ? "Fabric" : (ServerSoftware == "Spigot" ? "Spigot" : (ServerSoftware == "Vanilla" ? "Mojang" : "PaperMC")));
+                // If no error code but no versions, set a specific error code
+                if (errorCode == null && versionUrls.Count == 0)
+                {
+                    errorCode = "NO_DATA";
+                    errorMessage = "API returned no version data";
+                }
+                
+                var message = $"Failed to fetch the newest versions from the {apiName} API.\n\nError Code: {errorCode}\nError: {errorMessage}\n\nShowing locally stored versions instead.";
                 
                 MessageBox.Show(
                     message,
@@ -551,10 +571,168 @@ namespace MC_Server_Manager_3
             // Show error message if API failed
             if (errorCode != null || versionUrls.Count == 0)
             {
-                var apiName = ServerSoftware == "Purpur" ? "Purpur" : (ServerSoftware == "Spigot" ? "Spigot" : (ServerSoftware == "Vanilla" ? "Mojang" : "PaperMC"));
-                var message = errorCode != null 
-                    ? $"Failed to fetch the newest versions from the {apiName} API.\n\nError Code: {errorCode}\nError: {errorMessage}\n\nShowing locally stored versions instead."
-                    : $"The {apiName} API returned no version data. Showing locally stored versions instead.";
+                var apiName = ServerSoftware == "Purpur" ? "Purpur" : (ServerSoftware == "Fabric" ? "Fabric" : (ServerSoftware == "Spigot" ? "Spigot" : (ServerSoftware == "Vanilla" ? "Mojang" : "PaperMC")));
+                // If no error code but no versions, set a specific error code
+                if (errorCode == null && versionUrls.Count == 0)
+                {
+                    errorCode = "NO_DATA";
+                    errorMessage = "API returned no version data";
+                }
+                
+                var message = $"Failed to fetch the newest versions from the {apiName} API.\n\nError Code: {errorCode}\nError: {errorMessage}\n\nShowing locally stored versions instead.";
+                
+                MessageBox.Show(
+                    message,
+                    "API Error",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning);
+                
+                // Fall back to embedded JSON
+                LoadVersionsFromEmbeddedJson(ref latestVersion);
+            }
+
+            // Populate combo with all versions
+            PopulateVersionDropdown(latestVersion);
+        }
+
+        private async Task LoadFabricVersionsAsync()
+        {
+            versionUrls.Clear();
+            string latestVersion = null;
+            string errorMessage = null;
+            string errorCode = null;
+
+            // Try to fetch from Fabric Meta API first
+            try
+            {
+                using var http = new HttpClient();
+                http.Timeout = TimeSpan.FromSeconds(10);
+                http.DefaultRequestHeaders.UserAgent.ParseAdd("MCServerManager/3.4");
+                
+                // First, fetch all game versions
+                var gameVersionsResponse = await http.GetAsync("https://meta.fabricmc.net/v2/versions/game");
+                
+                if (!gameVersionsResponse.IsSuccessStatusCode)
+                {
+                    errorCode = $"HTTP {(int)gameVersionsResponse.StatusCode}";
+                    errorMessage = gameVersionsResponse.ReasonPhrase ?? "Unknown HTTP error";
+                    System.Diagnostics.Debug.WriteLine($"Fabric Meta API returned error status: {errorCode} - {errorMessage}");
+                }
+                else
+                {
+                    var gameVersionsJson = await gameVersionsResponse.Content.ReadAsStringAsync();
+                    using var gameVersionsDoc = JsonDocument.Parse(gameVersionsJson);
+
+                    // Fabric API returns an array of game version objects
+                    var allVersions = new System.Collections.Generic.List<string>();
+                    
+                    foreach (var versionObj in gameVersionsDoc.RootElement.EnumerateArray())
+                    {
+                        if (versionObj.TryGetProperty("version", out var versionElement))
+                        {
+                            var versionString = versionElement.GetString();
+                            // Include all versions (stable and unstable) to ensure we have data
+                            if (!string.IsNullOrEmpty(versionString) && !allVersions.Contains(versionString))
+                            {
+                                allVersions.Add(versionString);
+                            }
+                        }
+                    }
+
+                    System.Diagnostics.Debug.WriteLine($"Fabric API returned {allVersions.Count} total versions");
+
+                    // Get the latest version (first one after sorting)
+                    if (allVersions.Count > 0)
+                    {
+                        // Sort versions to get the latest
+                        allVersions.Sort((a, b) => CompareMinecraftVersions(a, b));
+                        allVersions.Reverse();
+                        latestVersion = allVersions[0];
+                        System.Diagnostics.Debug.WriteLine($"Latest Fabric version: {latestVersion}");
+                        
+                        // Limit to latest 30 versions to avoid excessive dropdown items
+                        if (allVersions.Count > 30)
+                        {
+                            allVersions = allVersions.Take(30).ToList();
+                            System.Diagnostics.Debug.WriteLine($"Limited to latest 30 versions for dropdown");
+                        }
+                    }
+
+                    // Second, fetch the latest loader version (single request)
+                    string latestLoaderVersion = null;
+                    try
+                    {
+                        var loaderResponse = await http.GetAsync("https://meta.fabricmc.net/v2/versions/loader");
+                        if (loaderResponse.IsSuccessStatusCode)
+                        {
+                            var loaderJson = await loaderResponse.Content.ReadAsStringAsync();
+                            using var loaderDoc = JsonDocument.Parse(loaderJson);
+                            
+                            // Get the first (latest) loader version
+                            if (loaderDoc.RootElement.GetArrayLength() > 0)
+                            {
+                                var firstLoader = loaderDoc.RootElement[0];
+                                if (firstLoader.TryGetProperty("version", out var loaderVersionElement))
+                                {
+                                    latestLoaderVersion = loaderVersionElement.GetString();
+                                    System.Diagnostics.Debug.WriteLine($"Latest Fabric loader version: {latestLoaderVersion}");
+                                }
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"Failed to get latest loader version: {ex.Message}");
+                    }
+
+                    // Build download URLs using the latest loader version for all game versions
+                    if (!string.IsNullOrEmpty(latestLoaderVersion))
+                    {
+                        foreach (var versionString in allVersions)
+                        {
+                            // Use the Fabric server launcher download URL format with the latest loader version
+                            var downloadUrl = $"https://meta.fabricmc.net/v2/versions/loader/{Uri.EscapeDataString(versionString)}/{latestLoaderVersion}/server/jar";
+                            versionUrls[versionString] = downloadUrl;
+                        }
+                        System.Diagnostics.Debug.WriteLine($"Built {versionUrls.Count} download URLs using loader version {latestLoaderVersion}");
+                    }
+                    else
+                    {
+                        System.Diagnostics.Debug.WriteLine("Could not get loader version, no download URLs built");
+                    }
+                }
+            }
+            catch (HttpRequestException ex)
+            {
+                errorCode = "NETWORK_ERROR";
+                errorMessage = ex.Message;
+                System.Diagnostics.Debug.WriteLine($"HTTP request failed: {ex.Message}");
+            }
+            catch (TaskCanceledException ex) when (!ex.CancellationToken.IsCancellationRequested)
+            {
+                errorCode = "TIMEOUT_ERROR";
+                errorMessage = "Request timed out. The API did not respond within the expected time.";
+                System.Diagnostics.Debug.WriteLine($"Request timed out: {ex.Message}");
+            }
+            catch (Exception ex)
+            {
+                errorCode = "GENERAL_ERROR";
+                errorMessage = ex.Message;
+                System.Diagnostics.Debug.WriteLine($"Failed to fetch versions from Fabric Meta API: {ex.Message}");
+            }
+
+            // Show error message if API failed
+            if (errorCode != null || versionUrls.Count == 0)
+            {
+                var apiName = "Fabric";
+                // If no error code but no versions, set a specific error code
+                if (errorCode == null && versionUrls.Count == 0)
+                {
+                    errorCode = "NO_DATA";
+                    errorMessage = "API returned no version data";
+                }
+                
+                var message = $"Failed to fetch the newest versions from the {apiName} API.\n\nError Code: {errorCode}\nError: {errorMessage}\n\nShowing locally stored versions instead.";
                 
                 MessageBox.Show(
                     message,
