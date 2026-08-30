@@ -116,7 +116,7 @@ namespace MC_Server_Manager_3
             {
                 using var http = new HttpClient();
                 http.Timeout = TimeSpan.FromSeconds(10);
-                http.DefaultRequestHeaders.UserAgent.ParseAdd("MCServerManager/3.4");
+                http.DefaultRequestHeaders.UserAgent.ParseAdd("MCServerManager/3.5");
                 var response = await http.GetAsync("https://fill.papermc.io/v3/projects/paper");
                 
                 if (!response.IsSuccessStatusCode)
@@ -249,7 +249,7 @@ namespace MC_Server_Manager_3
             {
                 using var http = new HttpClient();
                 http.Timeout = TimeSpan.FromSeconds(10);
-                http.DefaultRequestHeaders.UserAgent.ParseAdd("MCServerManager/3.4");
+                http.DefaultRequestHeaders.UserAgent.ParseAdd("MCServerManager/3.5");
                 var response = await http.GetAsync("https://api.purpurmc.org/v2/purpur");
                 
                 if (!response.IsSuccessStatusCode)
@@ -344,7 +344,7 @@ namespace MC_Server_Manager_3
             {
                 using var http = new HttpClient();
                 http.Timeout = TimeSpan.FromSeconds(10);
-                http.DefaultRequestHeaders.UserAgent.ParseAdd("MCServerManager/3.4");
+                http.DefaultRequestHeaders.UserAgent.ParseAdd("MCServerManager/3.5");
                 var response = await http.GetAsync("https://hub.spigotmc.org/versions/");
                 
                 if (!response.IsSuccessStatusCode)
@@ -446,7 +446,7 @@ namespace MC_Server_Manager_3
             {
                 using var http = new HttpClient();
                 http.Timeout = TimeSpan.FromSeconds(10);
-                http.DefaultRequestHeaders.UserAgent.ParseAdd("MCServerManager/3.4");
+                http.DefaultRequestHeaders.UserAgent.ParseAdd("MCServerManager/3.5");
                 var response = await http.GetAsync("https://launchermeta.mojang.com/mc/game/version_manifest.json");
                 
                 if (!response.IsSuccessStatusCode)
@@ -607,7 +607,7 @@ namespace MC_Server_Manager_3
             {
                 using var http = new HttpClient();
                 http.Timeout = TimeSpan.FromSeconds(10);
-                http.DefaultRequestHeaders.UserAgent.ParseAdd("MCServerManager/3.4");
+                http.DefaultRequestHeaders.UserAgent.ParseAdd("MCServerManager/3.5");
                 
                 // First, fetch all game versions
                 var gameVersionsResponse = await http.GetAsync("https://meta.fabricmc.net/v2/versions/game");
@@ -631,15 +631,18 @@ namespace MC_Server_Manager_3
                         if (versionObj.TryGetProperty("version", out var versionElement))
                         {
                             var versionString = versionElement.GetString();
-                            // Include all versions (stable and unstable) to ensure we have data
-                            if (!string.IsNullOrEmpty(versionString) && !allVersions.Contains(versionString))
+                            // Only include stable release versions to exclude snapshots and preview builds
+                            if (!string.IsNullOrEmpty(versionString) && 
+                                versionObj.TryGetProperty("stable", out var stableElement) &&
+                                stableElement.GetBoolean() &&
+                                !allVersions.Contains(versionString))
                             {
                                 allVersions.Add(versionString);
                             }
                         }
                     }
 
-                    System.Diagnostics.Debug.WriteLine($"Fabric API returned {allVersions.Count} total versions");
+                    System.Diagnostics.Debug.WriteLine($"Fabric API returned {allVersions.Count} stable versions (filtered out snapshots)");
 
                     // Get the latest version (first one after sorting)
                     if (allVersions.Count > 0)
@@ -650,11 +653,11 @@ namespace MC_Server_Manager_3
                         latestVersion = allVersions[0];
                         System.Diagnostics.Debug.WriteLine($"Latest Fabric version: {latestVersion}");
                         
-                        // Limit to latest 30 versions to avoid excessive dropdown items
-                        if (allVersions.Count > 30)
+                        // Limit to latest 50 stable versions to avoid excessive dropdown items
+                        if (allVersions.Count > 50)
                         {
-                            allVersions = allVersions.Take(30).ToList();
-                            System.Diagnostics.Debug.WriteLine($"Limited to latest 30 versions for dropdown");
+                            allVersions = allVersions.Take(50).ToList();
+                            System.Diagnostics.Debug.WriteLine($"Limited to latest 50 stable versions for dropdown");
                         }
                     }
 
@@ -685,20 +688,47 @@ namespace MC_Server_Manager_3
                         System.Diagnostics.Debug.WriteLine($"Failed to get latest loader version: {ex.Message}");
                     }
 
-                    // Build download URLs using the latest loader version for all game versions
-                    if (!string.IsNullOrEmpty(latestLoaderVersion))
+                    // Third, fetch the latest installer version (single request)
+                    string latestInstallerVersion = null;
+                    try
+                    {
+                        var installerResponse = await http.GetAsync("https://meta.fabricmc.net/v2/versions/installer");
+                        if (installerResponse.IsSuccessStatusCode)
+                        {
+                            var installerJson = await installerResponse.Content.ReadAsStringAsync();
+                            using var installerDoc = JsonDocument.Parse(installerJson);
+                            
+                            // Get the first (latest) installer version
+                            if (installerDoc.RootElement.GetArrayLength() > 0)
+                            {
+                                var firstInstaller = installerDoc.RootElement[0];
+                                if (firstInstaller.TryGetProperty("version", out var installerVersionElement))
+                                {
+                                    latestInstallerVersion = installerVersionElement.GetString();
+                                    System.Diagnostics.Debug.WriteLine($"Latest Fabric installer version: {latestInstallerVersion}");
+                                }
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"Failed to get latest installer version: {ex.Message}");
+                    }
+
+                    // Build download URLs using the latest loader and installer versions for all game versions
+                    if (!string.IsNullOrEmpty(latestLoaderVersion) && !string.IsNullOrEmpty(latestInstallerVersion))
                     {
                         foreach (var versionString in allVersions)
                         {
-                            // Use the Fabric server launcher download URL format with the latest loader version
-                            var downloadUrl = $"https://meta.fabricmc.net/v2/versions/loader/{Uri.EscapeDataString(versionString)}/{latestLoaderVersion}/server/jar";
+                            // Use the Fabric server launcher download URL format with the latest loader and installer versions
+                            var downloadUrl = $"https://meta.fabricmc.net/v2/versions/loader/{Uri.EscapeDataString(versionString)}/{latestLoaderVersion}/{latestInstallerVersion}/server/jar";
                             versionUrls[versionString] = downloadUrl;
                         }
-                        System.Diagnostics.Debug.WriteLine($"Built {versionUrls.Count} download URLs using loader version {latestLoaderVersion}");
+                        System.Diagnostics.Debug.WriteLine($"Built {versionUrls.Count} download URLs using loader version {latestLoaderVersion} and installer version {latestInstallerVersion}");
                     }
                     else
                     {
-                        System.Diagnostics.Debug.WriteLine("Could not get loader version, no download URLs built");
+                        System.Diagnostics.Debug.WriteLine("Could not get loader or installer version, no download URLs built");
                     }
                 }
             }
