@@ -45,6 +45,7 @@ namespace MC_Server_Manager_3
             cmbServerSoftware.Items.Add("Paper");
             cmbServerSoftware.Items.Add("Purpur");
             cmbServerSoftware.Items.Add("Fabric");
+            cmbServerSoftware.Items.Add("NeoForge");
             cmbServerSoftware.Items.Add("Spigot");
             cmbServerSoftware.Items.Add("Vanilla");
             cmbServerSoftware.SelectedIndex = 0;
@@ -77,6 +78,10 @@ namespace MC_Server_Manager_3
                 else if (software == "Fabric")
                 {
                     await LoadFabricVersionsAsync();
+                }
+                else if (software == "NeoForge")
+                {
+                    await LoadNeoForgeVersionsAsync();
                 }
                 else if (software == "Spigot")
                 {
@@ -213,7 +218,7 @@ namespace MC_Server_Manager_3
             // Show error message if API failed
             if (errorCode != null || versionUrls.Count == 0)
             {
-                var apiName = ServerSoftware == "Purpur" ? "Purpur" : (ServerSoftware == "Fabric" ? "Fabric" : (ServerSoftware == "Spigot" ? "Spigot" : (ServerSoftware == "Vanilla" ? "Mojang" : "PaperMC")));
+                var apiName = ServerSoftware == "Purpur" ? "Purpur" : (ServerSoftware == "Fabric" ? "Fabric" : (ServerSoftware == "NeoForge" ? "NeoForge" : (ServerSoftware == "Spigot" ? "Spigot" : (ServerSoftware == "Vanilla" ? "Mojang" : "PaperMC"))));
                 // If no error code but no versions, set a specific error code
                 if (errorCode == null && versionUrls.Count == 0)
                 {
@@ -308,7 +313,7 @@ namespace MC_Server_Manager_3
             // Show error message if API failed
             if (errorCode != null || versionUrls.Count == 0)
             {
-                var apiName = ServerSoftware == "Purpur" ? "Purpur" : (ServerSoftware == "Fabric" ? "Fabric" : (ServerSoftware == "Spigot" ? "Spigot" : (ServerSoftware == "Vanilla" ? "Mojang" : "PaperMC")));
+                var apiName = ServerSoftware == "Purpur" ? "Purpur" : (ServerSoftware == "Fabric" ? "Fabric" : (ServerSoftware == "NeoForge" ? "NeoForge" : (ServerSoftware == "Spigot" ? "Spigot" : (ServerSoftware == "Vanilla" ? "Mojang" : "PaperMC"))));
                 // If no error code but no versions, set a specific error code
                 if (errorCode == null && versionUrls.Count == 0)
                 {
@@ -410,7 +415,7 @@ namespace MC_Server_Manager_3
             // Show error message if API failed
             if (errorCode != null || versionUrls.Count == 0)
             {
-                var apiName = ServerSoftware == "Purpur" ? "Purpur" : (ServerSoftware == "Fabric" ? "Fabric" : (ServerSoftware == "Spigot" ? "Spigot" : (ServerSoftware == "Vanilla" ? "Mojang" : "PaperMC")));
+                var apiName = ServerSoftware == "Purpur" ? "Purpur" : (ServerSoftware == "Fabric" ? "Fabric" : (ServerSoftware == "NeoForge" ? "NeoForge" : (ServerSoftware == "Spigot" ? "Spigot" : (ServerSoftware == "Vanilla" ? "Mojang" : "PaperMC"))));
                 // If no error code but no versions, set a specific error code
                 if (errorCode == null && versionUrls.Count == 0)
                 {
@@ -571,7 +576,7 @@ namespace MC_Server_Manager_3
             // Show error message if API failed
             if (errorCode != null || versionUrls.Count == 0)
             {
-                var apiName = ServerSoftware == "Purpur" ? "Purpur" : (ServerSoftware == "Fabric" ? "Fabric" : (ServerSoftware == "Spigot" ? "Spigot" : (ServerSoftware == "Vanilla" ? "Mojang" : "PaperMC")));
+                var apiName = ServerSoftware == "Purpur" ? "Purpur" : (ServerSoftware == "Fabric" ? "Fabric" : (ServerSoftware == "NeoForge" ? "NeoForge" : (ServerSoftware == "Spigot" ? "Spigot" : (ServerSoftware == "Vanilla" ? "Mojang" : "PaperMC"))));
                 // If no error code but no versions, set a specific error code
                 if (errorCode == null && versionUrls.Count == 0)
                 {
@@ -593,6 +598,209 @@ namespace MC_Server_Manager_3
 
             // Populate combo with all versions
             PopulateVersionDropdown(latestVersion);
+        }
+
+        private async Task LoadNeoForgeVersionsAsync()
+        {
+            versionUrls.Clear();
+            string latestVersion = null;
+            string errorMessage = null;
+            string errorCode = null;
+
+            // Try to fetch from NeoForge Maven metadata
+            try
+            {
+                using var http = new HttpClient();
+                http.Timeout = TimeSpan.FromSeconds(10);
+                http.DefaultRequestHeaders.UserAgent.ParseAdd("MCServerManager/3.5");
+                
+                // Fetch Maven metadata XML
+                var metadataResponse = await http.GetAsync("https://maven.neoforged.net/releases/net/neoforged/neoforge/maven-metadata.xml");
+                
+                if (!metadataResponse.IsSuccessStatusCode)
+                {
+                    errorCode = $"HTTP {(int)metadataResponse.StatusCode}";
+                    errorMessage = metadataResponse.ReasonPhrase ?? "Unknown HTTP error";
+                    System.Diagnostics.Debug.WriteLine($"NeoForge Maven metadata returned error status: {errorCode} - {errorMessage}");
+                }
+                else
+                {
+                    var metadataXml = await metadataResponse.Content.ReadAsStringAsync();
+                    
+                    // Parse XML to extract versions
+                    var allVersions = new System.Collections.Generic.List<string>();
+                    var versionToMinecraftMap = new System.Collections.Generic.Dictionary<string, string>();
+                    
+                    // Simple XML parsing to extract version elements
+                    var versionStartTag = "<version>";
+                    var versionEndTag = "</version>";
+                    var index = 0;
+                    
+                    while ((index = metadataXml.IndexOf(versionStartTag, index)) != -1)
+                    {
+                        var startIndex = index + versionStartTag.Length;
+                        var endIndex = metadataXml.IndexOf(versionEndTag, startIndex);
+                        if (endIndex != -1)
+                        {
+                            var version = metadataXml.Substring(startIndex, endIndex - startIndex).Trim();
+                            if (!string.IsNullOrEmpty(version) && !allVersions.Contains(version))
+                            {
+                                allVersions.Add(version);
+                            }
+                            index = endIndex + versionEndTag.Length;
+                        }
+                        else
+                        {
+                            break;
+                        }
+                    }
+
+                    System.Diagnostics.Debug.WriteLine($"NeoForge Maven metadata returned {allVersions.Count} total versions");
+
+                    // Map NeoForge versions to Minecraft versions
+                    // NeoForge version pattern: major.minor.patch (e.g., 21.4.89 -> Minecraft 1.21.4)
+                    var minecraftVersions = new System.Collections.Generic.SortedSet<string>(System.Collections.Generic.Comparer<string>.Create((a, b) => CompareMinecraftVersions(a, b)));
+                    
+                    foreach (var neoforgeVersion in allVersions)
+                    {
+                        // Skip beta versions and extract stable ones
+                        if (!neoforgeVersion.Contains("-beta") && !neoforgeVersion.Contains("-alpha"))
+                        {
+                            var parts = neoforgeVersion.Split('.');
+                            if (parts.Length >= 2)
+                            {
+                                var major = parts[0];
+                                var minor = parts[1];
+                                
+                                // Map NeoForge major.minor to Minecraft version
+                                // 20.x -> 1.20.x, 21.x -> 1.21.x (older versions)
+                                // 26.x -> 26.x (newer versions without 1. prefix)
+                                string minecraftVersion;
+                                if (int.TryParse(major, out int majorNum) && majorNum >= 26)
+                                {
+                                    // New versioning scheme: 26.x -> 26.x
+                                    minecraftVersion = $"{major}.{minor}";
+                                }
+                                else
+                                {
+                                    // Old versioning scheme: 20.x -> 1.20.x
+                                    minecraftVersion = $"1.{major}.{minor}";
+                                }
+                                
+                                if (!versionToMinecraftMap.ContainsKey(minecraftVersion))
+                                {
+                                    versionToMinecraftMap[minecraftVersion] = neoforgeVersion;
+                                    minecraftVersions.Add(minecraftVersion);
+                                }
+                                else
+                                {
+                                    // Keep the latest NeoForge version for this Minecraft version
+                                    var existingNeoForgeVersion = versionToMinecraftMap[minecraftVersion];
+                                    if (CompareNeoForgeVersions(neoforgeVersion, existingNeoForgeVersion) > 0)
+                                    {
+                                        versionToMinecraftMap[minecraftVersion] = neoforgeVersion;
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    System.Diagnostics.Debug.WriteLine($"NeoForge mapped to {minecraftVersions.Count} Minecraft versions");
+
+                    // Get the latest version
+                    if (minecraftVersions.Count > 0)
+                    {
+                        var sortedVersions = minecraftVersions.ToList();
+                        sortedVersions.Sort((a, b) => CompareMinecraftVersions(a, b));
+                        sortedVersions.Reverse();
+                        latestVersion = sortedVersions[0];
+                        System.Diagnostics.Debug.WriteLine($"Latest NeoForge Minecraft version: {latestVersion}");
+                        
+                        // Limit to latest 50 versions
+                        if (sortedVersions.Count > 50)
+                        {
+                            sortedVersions = sortedVersions.Take(50).ToList();
+                            System.Diagnostics.Debug.WriteLine($"Limited to latest 50 NeoForge versions for dropdown");
+                        }
+
+                        // Build download URLs for each Minecraft version
+                        foreach (var mcVersion in sortedVersions)
+                        {
+                            if (versionToMinecraftMap.TryGetValue(mcVersion, out var neoforgeVersion))
+                            {
+                                // Build Maven download URL
+                                var downloadUrl = $"https://maven.neoforged.net/releases/net/neoforged/neoforge/{neoforgeVersion}/neoforge-{neoforgeVersion}-installer.jar";
+                                versionUrls[mcVersion] = downloadUrl;
+                            }
+                        }
+                        
+                        System.Diagnostics.Debug.WriteLine($"Built {versionUrls.Count} NeoForge download URLs");
+                    }
+                }
+            }
+            catch (HttpRequestException ex)
+            {
+                errorCode = "NETWORK_ERROR";
+                errorMessage = ex.Message;
+                System.Diagnostics.Debug.WriteLine($"HTTP request failed: {ex.Message}");
+            }
+            catch (TaskCanceledException ex) when (!ex.CancellationToken.IsCancellationRequested)
+            {
+                errorCode = "TIMEOUT_ERROR";
+                errorMessage = "Request timed out. The API did not respond within the expected time.";
+                System.Diagnostics.Debug.WriteLine($"Request timed out: {ex.Message}");
+            }
+            catch (Exception ex)
+            {
+                errorCode = "GENERAL_ERROR";
+                errorMessage = ex.Message;
+                System.Diagnostics.Debug.WriteLine($"Failed to fetch versions from NeoForge Maven: {ex.Message}");
+            }
+
+            // Show error message if API failed
+            if (errorCode != null || versionUrls.Count == 0)
+            {
+                var apiName = "NeoForge";
+                // If no error code but no versions, set a specific error code
+                if (errorCode == null && versionUrls.Count == 0)
+                {
+                    errorCode = "NO_DATA";
+                    errorMessage = "API returned no version data";
+                }
+                
+                var message = $"Failed to fetch the newest versions from the {apiName} API.\n\nError Code: {errorCode}\nError: {errorMessage}\n\nShowing locally stored versions instead.";
+                
+                MessageBox.Show(
+                    message,
+                    "API Error",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning);
+                
+                // Fall back to embedded JSON
+                LoadVersionsFromEmbeddedJson(ref latestVersion);
+            }
+
+            // Populate combo with all versions
+            PopulateVersionDropdown(latestVersion);
+        }
+
+        private int CompareNeoForgeVersions(string a, string b)
+        {
+            var partsA = a.Split('.');
+            var partsB = b.Split('.');
+            
+            for (int i = 0; i < Math.Max(partsA.Length, partsB.Length); i++)
+            {
+                var partA = i < partsA.Length ? int.Parse(partsA[i]) : 0;
+                var partB = i < partsB.Length ? int.Parse(partsB[i]) : 0;
+                
+                if (partA != partB)
+                {
+                    return partA.CompareTo(partB);
+                }
+            }
+            
+            return 0;
         }
 
         private async Task LoadFabricVersionsAsync()
