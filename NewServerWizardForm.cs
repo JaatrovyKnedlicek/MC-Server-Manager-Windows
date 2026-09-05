@@ -13,7 +13,7 @@ namespace MC_Server_Manager_3
 {
     public partial class NewServerWizardForm : Form
     {
-        private int stepIndex = 0; // 0..2
+        private int stepIndex = 0; // 0..3 (0: software selection, 1: download/RAM, 2: installation, 3: summary)
 
         public string ServerName => txtName.Text.Trim();
         public string ServerSoftware => cmbServerSoftware.SelectedItem?.ToString() ?? string.Empty;
@@ -29,6 +29,9 @@ namespace MC_Server_Manager_3
 
         // folder created for this server during step 0 -> step 1 transition
         public string ServerFolderPath { get; private set; } = string.Empty;
+
+        // path to NeoForge win_args.txt (discovered after installation)
+        private string NeoForgeWinArgsPath { get; set; } = string.Empty;
 
         public NewServerWizardForm()
         {
@@ -1181,12 +1184,13 @@ namespace MC_Server_Manager_3
             panelStep1.Visible = stepIndex == 0;
             panelStep2.Visible = stepIndex == 1;
             panelStep3.Visible = stepIndex == 2;
+            panelStep4.Visible = stepIndex == 3;
 
             btnBack.Enabled = stepIndex > 0;
-            btnNext.Visible = stepIndex < 2;
-            btnFinish.Visible = stepIndex == 2;
+            btnNext.Visible = stepIndex < 3;
+            btnFinish.Visible = stepIndex == 3;
 
-            if (stepIndex == 2)
+            if (stepIndex == 3)
             {
                 lblSummary.Text =
                     $"Name: {ServerName}\r\n" +
@@ -1268,6 +1272,108 @@ namespace MC_Server_Manager_3
             }
             Directory.CreateDirectory(folder);
             return folder;
+        }
+
+        private bool ServerSoftwareRequiresInstallation(string software)
+        {
+            return software == "NeoForge";
+        }
+
+        private async Task<bool> RunServerInstallationAsync(string serverFolderPath, string downloadedJarPath, string serverSoftware)
+        {
+            if (serverSoftware != "NeoForge")
+            {
+                return true; // No installation needed
+            }
+
+            try
+            {
+                // For NeoForge, the downloaded jar is the installer
+                // We need to run it with --installServer flag to generate the server files
+                lblInstallationProgress.Text = "Running NeoForge installer...\r\nThe installer will open in a separate window.";
+                progressBarInstallation.Value = 0;
+                progressBarInstallation.Style = ProgressBarStyle.Marquee;
+
+                var javaMajor = MapMinecraftToJavaMajor(ServerVersion);
+                var jdkInstallFolder = Path.Combine(AppContext.BaseDirectory, "jdks", $"temurin-{javaMajor}");
+                var javaExe = Path.Combine(jdkInstallFolder, "bin", "java.exe");
+
+                if (!File.Exists(javaExe))
+                {
+                    MessageBox.Show($"Java executable not found at {javaExe}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return false;
+                }
+
+                var processInfo = new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = javaExe,
+                    Arguments = $"-jar \"{downloadedJarPath}\" --installServer",
+                    WorkingDirectory = serverFolderPath,
+                    UseShellExecute = true,
+                    CreateNoWindow = false
+                };
+
+                using (var process = System.Diagnostics.Process.Start(processInfo))
+                {
+                    if (process == null)
+                    {
+                        MessageBox.Show("Failed to start NeoForge installer process", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        return false;
+                    }
+
+                    // Wait for the installation to complete
+                    await Task.Run(() => process.WaitForExit());
+
+                    if (process.ExitCode != 0)
+                    {
+                        MessageBox.Show($"NeoForge installation failed with exit code {process.ExitCode}.\r\nPlease check the installer window for details.", "Installation Failed", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        return false;
+                    }
+
+                    // Find the win_args.txt file created by the installer
+                    lblInstallationProgress.Text = "Locating NeoForge configuration files...";
+                    NeoForgeWinArgsPath = FindNeoForgeWinArgsPath(serverFolderPath);
+
+                    if (string.IsNullOrEmpty(NeoForgeWinArgsPath))
+                    {
+                        MessageBox.Show("NeoForge installation completed, but win_args.txt file was not found.\r\nThe server may not be properly configured.", "Warning", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        return false;
+                    }
+
+                    lblInstallationProgress.Text = "NeoForge installation completed successfully!";
+                    progressBarInstallation.Value = 100;
+                    progressBarInstallation.Style = ProgressBarStyle.Continuous;
+                    await Task.Delay(1500); // Show completion message briefly
+                    return true;
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error running server installation: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                progressBarInstallation.Style = ProgressBarStyle.Continuous;
+                return false;
+            }
+        }
+
+        private string FindNeoForgeWinArgsPath(string serverFolderPath)
+        {
+            try
+            {
+                var librariesPath = Path.Combine(serverFolderPath, "libraries", "net", "neoforged", "neoforge");
+                if (!Directory.Exists(librariesPath))
+                    return string.Empty;
+
+                // Look for win_args.txt in any version folder
+                var winArgsFile = Directory.GetFiles(librariesPath, "win_args.txt", SearchOption.AllDirectories).FirstOrDefault();
+                if (!string.IsNullOrEmpty(winArgsFile))
+                {
+                    // Return the relative path from the server folder
+                    var relativePath = Path.GetRelativePath(serverFolderPath, winArgsFile);
+                    return relativePath;
+                }
+            }
+            catch { }
+            return string.Empty;
         }
 
         // When moving from step 0 to step 1 we create folder and download server JAR and mapped JDK (with progress dialog).
@@ -1428,8 +1534,36 @@ namespace MC_Server_Manager_3
                     }
                 }
             }
+            else if (stepIndex == 1)
+            {
+                // Check if this server software needs installation
+                if (ServerSoftwareRequiresInstallation(ServerSoftware))
+                {
+                    // Transition to step 2 (installation) and run the installation
+                    stepIndex = 2;
+                    UpdateStep();
+                    btnNext.Enabled = false;
+                    btnBack.Enabled = false;
 
-            stepIndex = Math.Min(2, stepIndex + 1);
+                    var success = await RunServerInstallationAsync(ServerFolderPath, DownloadedJarPath, ServerSoftware);
+
+                    btnNext.Enabled = true;
+                    btnBack.Enabled = true;
+
+                    if (!success)
+                    {
+                        // Stay on installation step
+                        return;
+                    }
+                    // Installation succeeded, move to next step
+                    stepIndex = 3;
+                    UpdateStep();
+                    return;
+                }
+                // No installation needed, just move to summary
+            }
+
+            stepIndex = Math.Min(3, stepIndex + 1);
             UpdateStep();
         }
 
@@ -1592,7 +1726,30 @@ namespace MC_Server_Manager_3
                 var ramArg = FormatRamArg(ServerRamMB);
                 string startCmd;
 
-                if (File.Exists(javaExe))
+                if (ServerSoftware == "NeoForge")
+                {
+                    // For NeoForge, we need to use the generated argument files
+                    // and also create user_jvm_args.txt with memory settings
+                    string winArgsPath = NeoForgeWinArgsPath;
+                    if (string.IsNullOrEmpty(winArgsPath))
+                    {
+                        // Fallback in case path wasn't found during installation
+                        MessageBox.Show("NeoForge win_args.txt path not found. Please reinstall the server.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        return;
+                    }
+
+                    // Escape backslashes for batch file
+                    winArgsPath = winArgsPath.Replace("\\", "\\");
+                    startCmd = $"@echo off\r\njava @user_jvm_args.txt @{winArgsPath} %*\r\npause\r\n";
+
+                    // Also create user_jvm_args.txt with JVM memory arguments
+                    string userJvmArgs = $"-Xms{ramArg}\r\n-Xmx{ramArg}\r\n";
+                    if (!string.IsNullOrEmpty(ServerFolderPath))
+                    {
+                        File.WriteAllText(Path.Combine(ServerFolderPath, "user_jvm_args.txt"), userJvmArgs);
+                    }
+                }
+                else if (File.Exists(javaExe))
                 {
                     startCmd = $"@echo off\r\n\"{javaExe}\" -Xms{ramArg} -Xmx{ramArg} -jar \"%~dp0\\server.jar\" --nogui\r\n";
                 }

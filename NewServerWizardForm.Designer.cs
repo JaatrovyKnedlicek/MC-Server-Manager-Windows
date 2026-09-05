@@ -34,6 +34,10 @@ namespace MC_Server_Manager_3
             chkEulaAccept = new System.Windows.Forms.CheckBox();
 
             panelStep3 = new System.Windows.Forms.Panel();
+            lblInstallationProgress = new System.Windows.Forms.Label();
+            progressBarInstallation = new System.Windows.Forms.ProgressBar();
+
+            panelStep4 = new System.Windows.Forms.Panel();
             lblSummary = new System.Windows.Forms.Label();
 
             btnBack = new System.Windows.Forms.Button();
@@ -180,13 +184,35 @@ namespace MC_Server_Manager_3
             chkEulaAccept.Text = "I agree to the Minecraft EULA (https://www.minecraft.net/en-us/eula)";
             chkEulaAccept.UseVisualStyleBackColor = true;
 
-            // panelStep3
-            panelStep3.Controls.Add(lblSummary);
+            // panelStep3 (Installation)
+            panelStep3.Controls.Add(lblInstallationProgress);
+            panelStep3.Controls.Add(progressBarInstallation);
             panelStep3.Location = new System.Drawing.Point(12, 12);
             panelStep3.Name = "panelStep3";
             panelStep3.Size = new System.Drawing.Size(520, 220);
             panelStep3.TabIndex = 2;
             panelStep3.Visible = false;
+
+            // lblInstallationProgress
+            lblInstallationProgress.AutoSize = true;
+            lblInstallationProgress.Location = new System.Drawing.Point(10, 10);
+            lblInstallationProgress.Name = "lblInstallationProgress";
+            lblInstallationProgress.Size = new System.Drawing.Size(300, 15);
+            lblInstallationProgress.Text = "Installing server software...";
+
+            // progressBarInstallation
+            progressBarInstallation.Location = new System.Drawing.Point(10, 40);
+            progressBarInstallation.Name = "progressBarInstallation";
+            progressBarInstallation.Size = new System.Drawing.Size(500, 30);
+            progressBarInstallation.TabIndex = 0;
+
+            // panelStep4 (Summary)
+            panelStep4.Controls.Add(lblSummary);
+            panelStep4.Location = new System.Drawing.Point(12, 12);
+            panelStep4.Name = "panelStep4";
+            panelStep4.Size = new System.Drawing.Size(520, 220);
+            panelStep4.TabIndex = 3;
+            panelStep4.Visible = false;
 
             // lblSummary
             lblSummary.AutoSize = false;
@@ -230,6 +256,7 @@ namespace MC_Server_Manager_3
             this.Controls.Add(panelStep1);
             this.Controls.Add(panelStep2);
             this.Controls.Add(panelStep3);
+            this.Controls.Add(panelStep4);
             this.Controls.Add(btnBack);
             this.Controls.Add(btnNext);
             this.Controls.Add(btnFinish);
@@ -269,6 +296,10 @@ namespace MC_Server_Manager_3
         private System.Windows.Forms.CheckBox chkEulaAccept;
 
         private System.Windows.Forms.Panel panelStep3;
+        private System.Windows.Forms.Label lblInstallationProgress;
+        private System.Windows.Forms.ProgressBar progressBarInstallation;
+
+        private System.Windows.Forms.Panel panelStep4;
         private System.Windows.Forms.Label lblSummary;
 
         private System.Windows.Forms.Button btnBack;
