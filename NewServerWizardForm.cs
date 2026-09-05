@@ -1067,7 +1067,7 @@ namespace MC_Server_Manager_3
                 cmbVersions.SelectedIndex = 0;
             }
         }
-
+    
         private static int CompareMinecraftVersions(string a, string b)
         {
             // Compare numeric parts first (1.21.10 > 1.21.9), then handle pre-release (release > prerelease).

@@ -653,19 +653,123 @@ namespace MC_Server_Manager_3
         {
             try
             {
+                // Get all network interfaces and filter to only physical/real adapters
+                var nics = System.Net.NetworkInformation.NetworkInterface.GetAllNetworkInterfaces()
+                    .Where(nic => nic.OperationalStatus == System.Net.NetworkInformation.OperationalStatus.Up
+                        && IsPhysicalNetworkAdapter(nic))
+                    .ToList();
+
+                // Priority 1: Look for 192.168.x.x addresses (most common private range)
+                foreach (var nic in nics)
+                {
+                    var ip = GetIPFromInterface(nic, "192.168.");
+                    if (ip != null) return ip;
+                }
+
+                // Priority 2: Look for 10.x.x.x addresses (Class A private range)
+                foreach (var nic in nics)
+                {
+                    var ip = GetIPFromInterface(nic, "10.");
+                    if (ip != null) return ip;
+                }
+
+                // Priority 3: Look for 172.16-31.x.x addresses (Class B private range, excluding Sandbox 172.20)
+                foreach (var nic in nics)
+                {
+                    var props = nic.GetIPProperties();
+                    foreach (var addr in props.UnicastAddresses)
+                    {
+                        if (addr.Address.AddressFamily == AddressFamily.InterNetwork)
+                        {
+                            var ip = addr.Address.ToString();
+                            if (ip.StartsWith("172."))
+                            {
+                                // Only accept 172.16-172.19 and 172.32-223 (skip 172.20-31 for Sandbox/Docker)
+                                var parts = ip.Split('.');
+                                if (int.TryParse(parts[1], out int secondOctet))
+                                {
+                                    if ((secondOctet >= 16 && secondOctet <= 19) || secondOctet >= 32)
+                                    {
+                                        return ip;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Fallback: Use Dns method but with additional filtering
                 var host = Dns.GetHostEntry(Dns.GetHostName());
                 foreach (var ip in host.AddressList)
                 {
                     if (ip.AddressFamily == AddressFamily.InterNetwork && !IPAddress.IsLoopback(ip))
                     {
                         var s = ip.ToString();
-                        if (!s.StartsWith("169.254."))
+                        // Skip link-local, loopback, and virtual network ranges
+                        if (!s.StartsWith("169.254.") && !s.StartsWith("127.") && !IsVirtualNetworkIP(s))
                             return s;
                     }
                 }
             }
             catch { }
             return "N/A";
+        }
+
+        private bool IsPhysicalNetworkAdapter(System.Net.NetworkInformation.NetworkInterface nic)
+        {
+            // Exclude virtual adapters by name
+            var name = nic.Name.ToLower();
+            return !name.Contains("hyper-v")
+                && !name.Contains("docker")
+                && !name.Contains("vitual")
+                && !name.Contains("vpn")
+                && !name.Contains("tunnel")
+                && !name.Contains("tap")
+                && !name.Contains("tun")
+                && !name.Contains("loopback")
+                && !name.Contains("pseudo")
+                && !name.Contains("isatap")
+                && !name.Contains("6to4")
+                && !name.Contains("teredo")
+                && nic.NetworkInterfaceType != System.Net.NetworkInformation.NetworkInterfaceType.Loopback
+                && nic.NetworkInterfaceType != System.Net.NetworkInformation.NetworkInterfaceType.Ppp
+                && nic.NetworkInterfaceType != System.Net.NetworkInformation.NetworkInterfaceType.Slip;
+        }
+
+        private string? GetIPFromInterface(System.Net.NetworkInformation.NetworkInterface nic, string prefix)
+        {
+            try
+            {
+                var props = nic.GetIPProperties();
+                foreach (var addr in props.UnicastAddresses)
+                {
+                    if (addr.Address.AddressFamily == AddressFamily.InterNetwork)
+                    {
+                        var ip = addr.Address.ToString();
+                        if (ip.StartsWith(prefix) && !IPAddress.IsLoopback(addr.Address))
+                            return ip;
+                    }
+                }
+            }
+            catch { }
+            return null;
+        }
+
+        private bool IsVirtualNetworkIP(string ipAddress)
+        {
+            // Check for known virtual network ranges
+            if (ipAddress.StartsWith("172.20.") || ipAddress.StartsWith("172.21.") || 
+                ipAddress.StartsWith("172.22.") || ipAddress.StartsWith("172.23.") ||
+                ipAddress.StartsWith("172.24.") || ipAddress.StartsWith("172.25.") ||
+                ipAddress.StartsWith("172.26.") || ipAddress.StartsWith("172.27.") ||
+                ipAddress.StartsWith("172.28.") || ipAddress.StartsWith("172.29.") ||
+                ipAddress.StartsWith("172.30.") || ipAddress.StartsWith("172.31."))  // Windows Sandbox uses 172.20-172.31
+                return true;
+            if (ipAddress.StartsWith("127.")) // Loopback
+                return true;
+            if (ipAddress.StartsWith("169.254.")) // APIPA/Link-local
+                return true;
+            return false;
         }
 
         private async Task FetchAndSetPublicIpAsync(string lanIp)
