@@ -3,7 +3,9 @@ name: Release
 on:
   push:
     tags:
-      - 'v*'
+      - '*.*.*' # x.x.x versions
+      - '*.*'   # x.x versions
+      - 'v*'    # vx.x.x versions
 
 jobs:
   build:
