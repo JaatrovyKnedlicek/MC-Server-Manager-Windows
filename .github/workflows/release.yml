@@ -6,7 +6,8 @@ on:
       - '*.*.*' # x.x.x versions
       - '*.*'   # x.x versions
       - 'v*'    # vx.x.x versions
-
+permissions:
+  contents: write # Error 403 fixed by adding this permission to the workflow file.
 jobs:
   build:
     runs-on: windows-latest
