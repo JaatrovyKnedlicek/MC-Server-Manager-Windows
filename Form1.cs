@@ -387,6 +387,7 @@ namespace MC_Server_Manager_3
             {
                 label1.Text = "Select a server from the left";
                 lblVersionValue.Text = "N/A";
+                lblServerSoftwareValue.Text = "N/A";
                 lblIPValue.Text = "N/A";
                 lblPortValue.Text = "N/A";
                 lblStatusValue.Text = "Stopped";
@@ -402,6 +403,7 @@ namespace MC_Server_Manager_3
             var s = servers[SelectedIndex];
             label1.Text = s.Name;
             lblVersionValue.Text = s.Version;
+            lblServerSoftwareValue.Text = s.ServerSoftware;
             lblPortValue.Text = s.Port.ToString();
 
             // Show LAN (private) IP immediately and fetch public IP asynchronously
@@ -966,7 +968,7 @@ namespace MC_Server_Manager_3
             MessageBox.Show("Toggle Status Bar - not implemented yet.", "View", MessageBoxButtons.OK, MessageBoxIcon.Information);
 
         private void aboutToolStripMenuItem_Click(object sender, EventArgs e) =>
-            MessageBox.Show("Minecraft Server Manager 3\nVersion: 3.4\n© Ján Repka 2026", "About", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            MessageBox.Show("Minecraft Server Manager 3\nVersion: 3.5\n© Ján Repka 2026", "About", MessageBoxButtons.OK, MessageBoxIcon.Information);
 
         private void label1_Click(object sender, EventArgs e) { }
 

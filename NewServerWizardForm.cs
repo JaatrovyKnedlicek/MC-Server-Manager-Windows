@@ -229,7 +229,7 @@ namespace MC_Server_Manager_3
             // Show error message if API failed
             if (errorCode != null || versionUrls.Count == 0)
             {
-                var apiName = ServerSoftware == "Purpur" ? "Purpur" : (ServerSoftware == "Fabric" ? "Fabric" : (ServerSoftware == "NeoForge" ? "NeoForge" : (ServerSoftware == "Spigot" ? "Spigot" : (ServerSoftware == "Vanilla" ? "Mojang" : "PaperMC"))));
+                var apiName = ServerSoftware == "Purpur" ? "Purpur" : (ServerSoftware == "Fabric" ? "Fabric" : (ServerSoftware == "Forge" ? "Forge" : (ServerSoftware == "NeoForge" ? "NeoForge" : (ServerSoftware == "Spigot" ? "Spigot" : (ServerSoftware == "Vanilla" ? "Mojang" : "PaperMC")))));
                 // If no error code but no versions, set a specific error code
                 if (errorCode == null && versionUrls.Count == 0)
                 {
@@ -324,7 +324,7 @@ namespace MC_Server_Manager_3
             // Show error message if API failed
             if (errorCode != null || versionUrls.Count == 0)
             {
-                var apiName = ServerSoftware == "Purpur" ? "Purpur" : (ServerSoftware == "Fabric" ? "Fabric" : (ServerSoftware == "NeoForge" ? "NeoForge" : (ServerSoftware == "Spigot" ? "Spigot" : (ServerSoftware == "Vanilla" ? "Mojang" : "PaperMC"))));
+                var apiName = ServerSoftware == "Purpur" ? "Purpur" : (ServerSoftware == "Fabric" ? "Fabric" : (ServerSoftware == "Forge" ? "Forge" : (ServerSoftware == "NeoForge" ? "NeoForge" : (ServerSoftware == "Spigot" ? "Spigot" : (ServerSoftware == "Vanilla" ? "Mojang" : "PaperMC")))));
                 // If no error code but no versions, set a specific error code
                 if (errorCode == null && versionUrls.Count == 0)
                 {
@@ -426,7 +426,7 @@ namespace MC_Server_Manager_3
             // Show error message if API failed
             if (errorCode != null || versionUrls.Count == 0)
             {
-                var apiName = ServerSoftware == "Purpur" ? "Purpur" : (ServerSoftware == "Fabric" ? "Fabric" : (ServerSoftware == "NeoForge" ? "NeoForge" : (ServerSoftware == "Spigot" ? "Spigot" : (ServerSoftware == "Vanilla" ? "Mojang" : "PaperMC"))));
+                var apiName = ServerSoftware == "Purpur" ? "Purpur" : (ServerSoftware == "Fabric" ? "Fabric" : (ServerSoftware == "Forge" ? "Forge" : (ServerSoftware == "NeoForge" ? "NeoForge" : (ServerSoftware == "Spigot" ? "Spigot" : (ServerSoftware == "Vanilla" ? "Mojang" : "PaperMC")))));
                 // If no error code but no versions, set a specific error code
                 if (errorCode == null && versionUrls.Count == 0)
                 {
@@ -587,7 +587,7 @@ namespace MC_Server_Manager_3
             // Show error message if API failed
             if (errorCode != null || versionUrls.Count == 0)
             {
-                var apiName = ServerSoftware == "Purpur" ? "Purpur" : (ServerSoftware == "Fabric" ? "Fabric" : (ServerSoftware == "NeoForge" ? "NeoForge" : (ServerSoftware == "Spigot" ? "Spigot" : (ServerSoftware == "Vanilla" ? "Mojang" : "PaperMC"))));
+                var apiName = ServerSoftware == "Purpur" ? "Purpur" : (ServerSoftware == "Fabric" ? "Fabric" : (ServerSoftware == "Forge" ? "Forge" : (ServerSoftware == "NeoForge" ? "NeoForge" : (ServerSoftware == "Spigot" ? "Spigot" : (ServerSoftware == "Vanilla" ? "Mojang" : "PaperMC")))));
                 // If no error code but no versions, set a specific error code
                 if (errorCode == null && versionUrls.Count == 0)
                 {

@@ -48,6 +48,8 @@ namespace MC_Server_Manager_3
             lblStatusValue = new Label();
             labelVersionTitle = new Label();
             lblVersionValue = new Label();
+            labelServerSoftwareTitle = new Label();
+            lblServerSoftwareValue = new Label();
             labelIPTitle = new Label();
             lblIPValue = new Label();
             labelPortTitle = new Label();
@@ -294,6 +296,8 @@ namespace MC_Server_Manager_3
             groupBoxInfo.Controls.Add(lblStatusValue);
             groupBoxInfo.Controls.Add(labelVersionTitle);
             groupBoxInfo.Controls.Add(lblVersionValue);
+            groupBoxInfo.Controls.Add(labelServerSoftwareTitle);
+            groupBoxInfo.Controls.Add(lblServerSoftwareValue);
             groupBoxInfo.Controls.Add(labelIPTitle);
             groupBoxInfo.Controls.Add(lblIPValue);
             groupBoxInfo.Controls.Add(labelPortTitle);
@@ -343,10 +347,28 @@ namespace MC_Server_Manager_3
             lblVersionValue.TabIndex = 3;
             lblVersionValue.Text = "N/A";
             // 
+            // labelServerSoftwareTitle
+            // 
+            labelServerSoftwareTitle.AutoSize = true;
+            labelServerSoftwareTitle.Location = new Point(12, 68);
+            labelServerSoftwareTitle.Name = "labelServerSoftwareTitle";
+            labelServerSoftwareTitle.Size = new Size(95, 15);
+            labelServerSoftwareTitle.TabIndex = 4;
+            labelServerSoftwareTitle.Text = "Server Software:";
+            // 
+            // lblServerSoftwareValue
+            // 
+            lblServerSoftwareValue.AutoSize = true;
+            lblServerSoftwareValue.Location = new Point(117, 68);
+            lblServerSoftwareValue.Name = "lblServerSoftwareValue";
+            lblServerSoftwareValue.Size = new Size(29, 15);
+            lblServerSoftwareValue.TabIndex = 5;
+            lblServerSoftwareValue.Text = "N/A";
+            // 
             // labelIPTitle
             // 
             labelIPTitle.AutoSize = true;
-            labelIPTitle.Location = new Point(12, 81);
+            labelIPTitle.Location = new Point(12, 95);
             labelIPTitle.Name = "labelIPTitle";
             labelIPTitle.Size = new Size(20, 15);
             labelIPTitle.TabIndex = 4;
@@ -355,7 +377,7 @@ namespace MC_Server_Manager_3
             // lblIPValue
             // 
             lblIPValue.AutoSize = true;
-            lblIPValue.Location = new Point(82, 81);
+            lblIPValue.Location = new Point(82, 95);
             lblIPValue.Name = "lblIPValue";
             lblIPValue.Size = new Size(29, 15);
             lblIPValue.TabIndex = 5;
@@ -364,7 +386,7 @@ namespace MC_Server_Manager_3
             // labelPortTitle
             // 
             labelPortTitle.AutoSize = true;
-            labelPortTitle.Location = new Point(12, 114);
+            labelPortTitle.Location = new Point(12, 128);
             labelPortTitle.Name = "labelPortTitle";
             labelPortTitle.Size = new Size(32, 15);
             labelPortTitle.TabIndex = 6;
@@ -373,7 +395,7 @@ namespace MC_Server_Manager_3
             // lblPortValue
             // 
             lblPortValue.AutoSize = true;
-            lblPortValue.Location = new Point(82, 114);
+            lblPortValue.Location = new Point(82, 128);
             lblPortValue.Name = "lblPortValue";
             lblPortValue.Size = new Size(37, 15);
             lblPortValue.TabIndex = 5;
@@ -382,7 +404,7 @@ namespace MC_Server_Manager_3
             // labelPlayersTitle
             // 
             labelPlayersTitle.AutoSize = true;
-            labelPlayersTitle.Location = new Point(12, 147);
+            labelPlayersTitle.Location = new Point(12, 161);
             labelPlayersTitle.Name = "labelPlayersTitle";
             labelPlayersTitle.Size = new Size(47, 15);
             labelPlayersTitle.TabIndex = 6;
@@ -392,7 +414,7 @@ namespace MC_Server_Manager_3
             // listBoxPlayers
             // 
             listBoxPlayers.FormattingEnabled = true;
-            listBoxPlayers.Location = new Point(12, 165);
+            listBoxPlayers.Location = new Point(12, 179);
             listBoxPlayers.Name = "listBoxPlayers";
             listBoxPlayers.Size = new Size(200, 139);
             listBoxPlayers.TabIndex = 7;
@@ -478,6 +500,8 @@ namespace MC_Server_Manager_3
         private Label lblStatusValue;
         private Label labelVersionTitle;
         private Label lblVersionValue;
+        private Label labelServerSoftwareTitle;
+        private Label lblServerSoftwareValue;
         private Label labelIPTitle;
         private Label lblIPValue;
         private Label labelPortTitle;
