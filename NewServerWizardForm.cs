@@ -33,6 +33,9 @@ namespace MC_Server_Manager_3
         // path to NeoForge win_args.txt (discovered after installation)
         private string NeoForgeWinArgsPath { get; set; } = string.Empty;
 
+        // path to Forge win_args.txt (discovered after installation)
+        private string ForgeWinArgsPath { get; set; } = string.Empty;
+
         public NewServerWizardForm()
         {
             InitializeComponent();
@@ -48,6 +51,7 @@ namespace MC_Server_Manager_3
             cmbServerSoftware.Items.Add("Paper");
             cmbServerSoftware.Items.Add("Purpur");
             cmbServerSoftware.Items.Add("Fabric");
+            cmbServerSoftware.Items.Add("Forge");
             cmbServerSoftware.Items.Add("NeoForge");
             cmbServerSoftware.Items.Add("Spigot");
             cmbServerSoftware.Items.Add("Vanilla");
@@ -81,6 +85,10 @@ namespace MC_Server_Manager_3
                 else if (software == "Fabric")
                 {
                     await LoadFabricVersionsAsync();
+                }
+                else if (software == "Forge")
+                {
+                    await LoadForgeVersionsAsync();
                 }
                 else if (software == "NeoForge")
                 {
@@ -787,6 +795,176 @@ namespace MC_Server_Manager_3
             PopulateVersionDropdown(latestVersion);
         }
 
+        private async Task LoadForgeVersionsAsync()
+        {
+            versionUrls.Clear();
+            string latestVersion = null;
+            string errorMessage = null;
+            string errorCode = null;
+
+            try
+            {
+                using var http = new HttpClient();
+                http.Timeout = TimeSpan.FromSeconds(10);
+                http.DefaultRequestHeaders.UserAgent.ParseAdd("MCServerManager/3.5");
+
+                // Fetch Forge Maven metadata for available versions
+                var metadataResponse = await http.GetAsync("https://maven.minecraftforge.net/net/minecraftforge/forge/maven-metadata.xml");
+
+                if (!metadataResponse.IsSuccessStatusCode)
+                {
+                    errorCode = $"HTTP {(int)metadataResponse.StatusCode}";
+                    errorMessage = metadataResponse.ReasonPhrase ?? "Unknown HTTP error";
+                    System.Diagnostics.Debug.WriteLine($"Forge Maven metadata returned error status: {errorCode} - {errorMessage}");
+                }
+                else
+                {
+                    var xmlContent = await metadataResponse.Content.ReadAsStringAsync();
+                    var doc = new System.Xml.XmlDocument();
+                    doc.LoadXml(xmlContent);
+
+                    var allVersions = new System.Collections.Generic.List<string>();
+                    var versionNodes = doc.GetElementsByTagName("version");
+
+                    foreach (System.Xml.XmlNode node in versionNodes)
+                    {
+                        var version = node.InnerText?.Trim();
+                        if (!string.IsNullOrEmpty(version))
+                        {
+                            allVersions.Add(version);
+                        }
+                    }
+
+                    System.Diagnostics.Debug.WriteLine($"Forge Maven metadata returned {allVersions.Count} total versions");
+
+                    // Map Forge versions to Minecraft versions
+                    // Forge format: MCVERSION-forge-FORGEVERSION (e.g., 1.20.1-47.3.0)
+                    var minecraftVersions = new System.Collections.Generic.SortedSet<string>(System.Collections.Generic.Comparer<string>.Create((a, b) => CompareMinecraftVersions(a, b)));
+                    var versionToForgeMap = new System.Collections.Generic.Dictionary<string, string>();
+
+                    foreach (var forgeVersion in allVersions)
+                    {
+                        // Skip non-installer versions and pre-releases
+                        if (!forgeVersion.Contains("-") || forgeVersion.Contains("-beta") || forgeVersion.Contains("-alpha"))
+                            continue;
+
+                        // Parse format: 1.20.1-47.3.0
+                        var parts = forgeVersion.Split('-');
+                        if (parts.Length >= 2)
+                        {
+                            var mcVersion = parts[0]; // e.g., "1.20.1"
+
+                            // Validate it's a proper Minecraft version
+                            if (Version.TryParse(mcVersion, out var mcVer) && mcVer.Major == 1)
+                            {
+                                if (!versionToForgeMap.ContainsKey(mcVersion))
+                                {
+                                    versionToForgeMap[mcVersion] = forgeVersion;
+                                    minecraftVersions.Add(mcVersion);
+                                }
+                                else
+                                {
+                                    // Keep the latest Forge version for this Minecraft version
+                                    var existingForgeVersion = versionToForgeMap[mcVersion];
+                                    if (CompareForgeVersions(forgeVersion, existingForgeVersion) > 0)
+                                    {
+                                        versionToForgeMap[mcVersion] = forgeVersion;
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    System.Diagnostics.Debug.WriteLine($"Forge mapped to {minecraftVersions.Count} Minecraft versions");
+
+                    if (minecraftVersions.Count > 0)
+                    {
+                        var sortedVersions = minecraftVersions.ToList();
+                        sortedVersions.Sort((a, b) => CompareMinecraftVersions(a, b));
+                        sortedVersions.Reverse(); // newest first
+                        latestVersion = sortedVersions[0];
+
+                        // Limit to latest 50 versions for dropdown performance
+                        if (sortedVersions.Count > 50)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"Limited to latest 50 Forge versions for dropdown");
+                            sortedVersions = sortedVersions.Take(50).ToList();
+                        }
+
+                        foreach (var mcVersion in sortedVersions)
+                        {
+                            if (versionToForgeMap.TryGetValue(mcVersion, out var forgeVersion))
+                            {
+                                // Build Maven download URL for installer
+                                var downloadUrl = $"https://maven.minecraftforge.net/net/minecraftforge/forge/{forgeVersion}/forge-{forgeVersion}-installer.jar";
+                                versionUrls[mcVersion] = downloadUrl;
+                            }
+                        }
+
+                        System.Diagnostics.Debug.WriteLine($"Built {versionUrls.Count} Forge download URLs");
+                    }
+                }
+            }
+            catch (HttpRequestException ex)
+            {
+                errorCode = "NETWORK_ERROR";
+                errorMessage = ex.Message;
+                System.Diagnostics.Debug.WriteLine($"HTTP request failed: {ex.Message}");
+            }
+            catch (Exception ex)
+            {
+                errorCode = "GENERAL_ERROR";
+                errorMessage = ex.Message;
+                System.Diagnostics.Debug.WriteLine($"Failed to fetch versions from Forge Maven: {ex.Message}");
+            }
+
+            if (errorCode != null && versionUrls.Count == 0)
+            {
+                var apiName = "Forge";
+                var message = $"Failed to fetch the newest versions from the {apiName} API.\n\nError Code: {errorCode}\nError: {errorMessage}\n\nShowing locally stored versions instead.";
+
+                MessageBox.Show(
+                    message,
+                    "API Error",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning);
+            }
+
+            // Populate combo with all versions
+            PopulateVersionDropdown(latestVersion);
+        }
+
+        private int CompareForgeVersions(string a, string b)
+        {
+            // Format: MCVERSION-forge-FORGEVERSION
+            // Extract just the forge version part (after the '-forge-' part)
+            var forgePartA = GetForgeVersionPart(a);
+            var forgePartB = GetForgeVersionPart(b);
+
+            var partsA = forgePartA.Split('.');
+            var partsB = forgePartB.Split('.');
+
+            for (int i = 0; i < Math.Max(partsA.Length, partsB.Length); i++)
+            {
+                var partA = i < partsA.Length && int.TryParse(partsA[i], out var numA) ? numA : 0;
+                var partB = i < partsB.Length && int.TryParse(partsB[i], out var numB) ? numB : 0;
+
+                if (partA != partB)
+                {
+                    return partA.CompareTo(partB);
+                }
+            }
+
+            return 0;
+        }
+
+        private string GetForgeVersionPart(string fullVersion)
+        {
+            // Format: 1.20.1-47.3.0
+            var parts = fullVersion.Split('-');
+            return parts.Length >= 2 ? parts[1] : fullVersion;
+        }
+
         private int CompareNeoForgeVersions(string a, string b)
         {
             var partsA = a.Split('.');
@@ -1204,6 +1382,14 @@ namespace MC_Server_Manager_3
         // Map Minecraft version string to Java major according to your rules.
         private int MapMinecraftToJavaMajor(string mcVersion)
         {
+            // For NeoForge, versions like "26.2" or "21.4" have different Java requirements
+            // 26.x (1.26) -> Java 25
+            // 21.x (1.21) through 25.x -> Java 21
+            // 20.x (1.20) and below -> varies
+
+            if (string.IsNullOrEmpty(mcVersion))
+                return 25; // fallback
+
             // Try parse as Version
             if (!Version.TryParse(mcVersion, out var v))
             {
@@ -1211,7 +1397,25 @@ namespace MC_Server_Manager_3
                 return 25;
             }
 
-            // compare using Version, treat missing fields as 0
+            // Handle new NeoForge versioning (26.x, 27.x etc. without 1. prefix)
+            if (v.Major >= 26)
+            {
+                // 26.0 -> Java 21
+                if (v.Major == 26 && v.Minor == 0)
+                    return 21;
+                // 26.1+ -> Java 25
+                if (v.Major == 26 && v.Minor >= 1)
+                    return 25;
+                // 27+ -> Java 25
+                if (v.Major >= 27)
+                    return 25;
+            }
+
+            // Handle intermediate NeoForge versions (21-25 without 1. prefix)
+            if (v.Major >= 21 && v.Major <= 25)
+                return 21;
+
+            // Handle classic Minecraft versioning (1.x.x)
             if (v.Major == 1)
             {
                 var minor = v.Minor;
@@ -1232,24 +1436,10 @@ namespace MC_Server_Manager_3
                 return 21;
             }
 
-            // non-1.x versions (new versioning scheme)
-            if (v.Major >= 26)
-            {
-                // 26.1 and above -> Java 25
-                if (v.Major == 26 && v.Minor >= 1)
-                    return 25;
-                // 26.0 -> Java 21 (assuming 26.0 still uses Java 21)
-                if (v.Major == 26 && v.Minor == 0)
-                    return 21;
-                // 27+ -> Java 25 (future-proof)
-                if (v.Major >= 27)
-                    return 25;
-            }
-            
-            // 2.x - 25.x versions -> Java 21
+            // Handle 2-25 range versions
             if (v.Major >= 2 && v.Major <= 25)
                 return 21;
-            
+
             // fallback for unknown future versions
             return 25;
         }
@@ -1276,21 +1466,23 @@ namespace MC_Server_Manager_3
 
         private bool ServerSoftwareRequiresInstallation(string software)
         {
-            return software == "NeoForge";
+            return software == "NeoForge" || software == "Forge";
         }
 
         private async Task<bool> RunServerInstallationAsync(string serverFolderPath, string downloadedJarPath, string serverSoftware)
         {
-            if (serverSoftware != "NeoForge")
+            if (!ServerSoftwareRequiresInstallation(serverSoftware))
             {
                 return true; // No installation needed
             }
 
             try
             {
-                // For NeoForge, the downloaded jar is the installer
-                // We need to run it with --installServer flag to generate the server files
-                lblInstallationProgress.Text = "Running NeoForge installer...\r\nThe installer will open in a separate window.";
+                // For Forge/NeoForge, the downloaded jar is the installer
+                var installerName = serverSoftware == "Forge" ? "Forge" : "NeoForge";
+                var installFlag = serverSoftware == "Forge" ? "--installServer" : "--installServer";
+
+                lblInstallationProgress.Text = $"Running {installerName} installer...\r\nThe installer will open in a separate window.";
                 progressBarInstallation.Value = 0;
                 progressBarInstallation.Style = ProgressBarStyle.Marquee;
 
@@ -1307,7 +1499,7 @@ namespace MC_Server_Manager_3
                 var processInfo = new System.Diagnostics.ProcessStartInfo
                 {
                     FileName = javaExe,
-                    Arguments = $"-jar \"{downloadedJarPath}\" --installServer",
+                    Arguments = $"-jar \"{downloadedJarPath}\" {installFlag}",
                     WorkingDirectory = serverFolderPath,
                     UseShellExecute = true,
                     CreateNoWindow = false
@@ -1317,7 +1509,7 @@ namespace MC_Server_Manager_3
                 {
                     if (process == null)
                     {
-                        MessageBox.Show("Failed to start NeoForge installer process", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        MessageBox.Show($"Failed to start {installerName} installer process", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                         return false;
                     }
 
@@ -1326,21 +1518,31 @@ namespace MC_Server_Manager_3
 
                     if (process.ExitCode != 0)
                     {
-                        MessageBox.Show($"NeoForge installation failed with exit code {process.ExitCode}.\r\nPlease check the installer window for details.", "Installation Failed", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        MessageBox.Show($"{installerName} installation failed with exit code {process.ExitCode}.\r\nPlease check the installer window for details.", "Installation Failed", MessageBoxButtons.OK, MessageBoxIcon.Error);
                         return false;
                     }
 
-                    // Find the win_args.txt file created by the installer
-                    lblInstallationProgress.Text = "Locating NeoForge configuration files...";
-                    NeoForgeWinArgsPath = FindNeoForgeWinArgsPath(serverFolderPath);
+                    // Find the win_args.txt file created by the installer (for Forge/NeoForge)
+                    lblInstallationProgress.Text = $"Locating {installerName} configuration files...";
+                    var winArgsPath = FindInstallerWinArgsPath(serverFolderPath, serverSoftware);
 
-                    if (string.IsNullOrEmpty(NeoForgeWinArgsPath))
+                    if (string.IsNullOrEmpty(winArgsPath))
                     {
-                        MessageBox.Show("NeoForge installation completed, but win_args.txt file was not found.\r\nThe server may not be properly configured.", "Warning", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        MessageBox.Show($"{installerName} installation completed, but configuration files were not found.\r\nThe server may not be properly configured.", "Warning", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                         return false;
                     }
 
-                    lblInstallationProgress.Text = "NeoForge installation completed successfully!";
+                    // Store the path for later use in start.cmd generation
+                    if (serverSoftware == "Forge")
+                    {
+                        ForgeWinArgsPath = winArgsPath;
+                    }
+                    else if (serverSoftware == "NeoForge")
+                    {
+                        NeoForgeWinArgsPath = winArgsPath;
+                    }
+
+                    lblInstallationProgress.Text = $"{installerName} installation completed successfully!";
                     progressBarInstallation.Value = 100;
                     progressBarInstallation.Style = ProgressBarStyle.Continuous;
                     await Task.Delay(1500); // Show completion message briefly
@@ -1353,6 +1555,40 @@ namespace MC_Server_Manager_3
                 progressBarInstallation.Style = ProgressBarStyle.Continuous;
                 return false;
             }
+        }
+
+        private string FindInstallerWinArgsPath(string serverFolderPath, string serverSoftware)
+        {
+            // This finds win_args.txt for both Forge and NeoForge
+            try
+            {
+                string librariesPath;
+                if (serverSoftware == "Forge")
+                {
+                    // Forge uses minecraftforge path
+                    librariesPath = Path.Combine(serverFolderPath, "libraries", "net", "minecraftforge", "forge");
+                }
+                else
+                {
+                    // NeoForge uses neoforged path
+                    librariesPath = Path.Combine(serverFolderPath, "libraries", "net", "neoforged", "neoforge");
+                }
+
+                if (!Directory.Exists(librariesPath))
+                    return string.Empty;
+
+                // Look for win_args.txt in any version folder
+                var winArgsFile = Directory.GetFiles(librariesPath, "win_args.txt", SearchOption.AllDirectories).FirstOrDefault();
+                if (!string.IsNullOrEmpty(winArgsFile))
+                {
+                    // Return the relative path from the server folder
+                    var relativePath = Path.GetRelativePath(serverFolderPath, winArgsFile);
+                    return relativePath;
+                }
+            }
+            catch { }
+
+            return string.Empty;
         }
 
         private string FindNeoForgeWinArgsPath(string serverFolderPath)
@@ -1536,7 +1772,7 @@ namespace MC_Server_Manager_3
             }
             else if (stepIndex == 1)
             {
-                // Check if this server software needs installation
+                // Check if this server software needs installation (only NeoForge)
                 if (ServerSoftwareRequiresInstallation(ServerSoftware))
                 {
                     // Transition to step 2 (installation) and run the installation
@@ -1560,7 +1796,10 @@ namespace MC_Server_Manager_3
                     UpdateStep();
                     return;
                 }
-                // No installation needed, just move to summary
+                // No installation needed for non-NeoForge servers, skip to step 3 (summary)
+                stepIndex = 3;
+                UpdateStep();
+                return;
             }
 
             stepIndex = Math.Min(3, stepIndex + 1);
@@ -1726,21 +1965,34 @@ namespace MC_Server_Manager_3
                 var ramArg = FormatRamArg(ServerRamMB);
                 string startCmd;
 
-                if (ServerSoftware == "NeoForge")
+                if (ServerSoftware == "NeoForge" || ServerSoftware == "Forge")
                 {
-                    // For NeoForge, we need to use the generated argument files
+                    // For Forge/NeoForge, we need to use the generated argument files
                     // and also create user_jvm_args.txt with memory settings
-                    string winArgsPath = NeoForgeWinArgsPath;
+                    string winArgsPath = ServerSoftware == "Forge" ? ForgeWinArgsPath : NeoForgeWinArgsPath;
+                    string softwareName = ServerSoftware == "Forge" ? "Forge" : "NeoForge";
+
                     if (string.IsNullOrEmpty(winArgsPath))
                     {
                         // Fallback in case path wasn't found during installation
-                        MessageBox.Show("NeoForge win_args.txt path not found. Please reinstall the server.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        MessageBox.Show($"{softwareName} win_args.txt path not found. Please reinstall the server.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                         return;
                     }
 
-                    // Escape backslashes for batch file
-                    winArgsPath = winArgsPath.Replace("\\", "\\");
-                    startCmd = $"@echo off\r\njava @user_jvm_args.txt @{winArgsPath} %*\r\npause\r\n";
+                    // Use bundled Java if available, otherwise fall back to system java
+                    if (File.Exists(javaExe))
+                    {
+                        // Escape backslashes for batch file
+                        winArgsPath = winArgsPath.Replace("\\", "\\");
+                        startCmd = $"@echo off\r\n\"{javaExe}\" @user_jvm_args.txt @{winArgsPath} --nogui %*\r\npause\r\n";
+                    }
+                    else
+                    {
+                        MessageBox.Show($"Bundled JDK not found for Java {javaMajor}, start.cmd will use system java.", "Warning", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        // Escape backslashes for batch file
+                        winArgsPath = winArgsPath.Replace("\\", "\\");
+                        startCmd = $"@echo off\r\njava @user_jvm_args.txt @{winArgsPath} --nogui %*\r\npause\r\n";
+                    }
 
                     // Also create user_jvm_args.txt with JVM memory arguments
                     string userJvmArgs = $"-Xms{ramArg}\r\n-Xmx{ramArg}\r\n";
