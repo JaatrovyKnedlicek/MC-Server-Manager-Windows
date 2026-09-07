@@ -50,6 +50,7 @@ namespace MC_Server_Manager_3
             cmbServerSoftware.Items.Clear();
             cmbServerSoftware.Items.Add("Paper");
             cmbServerSoftware.Items.Add("Purpur");
+            cmbServerSoftware.Items.Add("Folia");
             cmbServerSoftware.Items.Add("Fabric");
             cmbServerSoftware.Items.Add("Forge");
             cmbServerSoftware.Items.Add("NeoForge");
@@ -102,6 +103,10 @@ namespace MC_Server_Manager_3
                 {
                     await LoadVanillaVersionsAsync();
                 }
+                else if (software == "Folia")
+                {
+                    await LoadFoliaVersionsAsync();
+                }
                 else
                 {
                     await LoadPaperVersionsAsync();
@@ -122,6 +127,16 @@ namespace MC_Server_Manager_3
 
         private async Task LoadPaperVersionsAsync()
         {
+            await LoadPaperLikeVersionsAsync("paper", "PaperMC", "MC_Server_Manager_3.paper-versions.json");
+        }
+
+        private async Task LoadFoliaVersionsAsync()
+        {
+            await LoadPaperLikeVersionsAsync("folia", "Folia", null);
+        }
+
+        private async Task LoadPaperLikeVersionsAsync(string projectName, string apiDisplayName, string embeddedResourceName)
+        {
             versionUrls.Clear();
             string latestVersion = null;
             string errorMessage = null;
@@ -133,13 +148,13 @@ namespace MC_Server_Manager_3
                 using var http = new HttpClient();
                 http.Timeout = TimeSpan.FromSeconds(10);
                 http.DefaultRequestHeaders.UserAgent.ParseAdd("MCServerManager/3.5");
-                var response = await http.GetAsync("https://fill.papermc.io/v3/projects/paper");
+                var response = await http.GetAsync($"https://fill.papermc.io/v3/projects/{projectName}");
                 
                 if (!response.IsSuccessStatusCode)
                 {
                     errorCode = $"HTTP {(int)response.StatusCode}";
                     errorMessage = response.ReasonPhrase ?? "Unknown HTTP error";
-                    System.Diagnostics.Debug.WriteLine($"PaperMC API returned error status: {errorCode} - {errorMessage}");
+                    System.Diagnostics.Debug.WriteLine($"{apiDisplayName} API returned error status: {errorCode} - {errorMessage}");
                 }
                 else
                 {
@@ -179,7 +194,7 @@ namespace MC_Server_Manager_3
                             // Use the Fill v3 API to get the latest build for each version
                             try
                             {
-                                var buildResponse = await http.GetAsync($"https://fill.papermc.io/v3/projects/paper/versions/{versionString}/builds/latest");
+                                var buildResponse = await http.GetAsync($"https://fill.papermc.io/v3/projects/{projectName}/versions/{versionString}/builds/latest");
                                 if (buildResponse.IsSuccessStatusCode)
                                 {
                                     var buildData = await buildResponse.Content.ReadAsStringAsync();
@@ -223,30 +238,33 @@ namespace MC_Server_Manager_3
             {
                 errorCode = "GENERAL_ERROR";
                 errorMessage = ex.Message;
-                System.Diagnostics.Debug.WriteLine($"Failed to fetch versions from PaperMC API: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Failed to fetch versions from {apiDisplayName} API: {ex.Message}");
             }
 
             // Show error message if API failed
             if (errorCode != null || versionUrls.Count == 0)
             {
-                var apiName = ServerSoftware == "Purpur" ? "Purpur" : (ServerSoftware == "Fabric" ? "Fabric" : (ServerSoftware == "Forge" ? "Forge" : (ServerSoftware == "NeoForge" ? "NeoForge" : (ServerSoftware == "Spigot" ? "Spigot" : (ServerSoftware == "Vanilla" ? "Mojang" : "PaperMC")))));
+                var apiName = apiDisplayName;
                 // If no error code but no versions, set a specific error code
                 if (errorCode == null && versionUrls.Count == 0)
                 {
                     errorCode = "NO_DATA";
                     errorMessage = "API returned no version data";
                 }
-                
+
                 var message = $"Failed to fetch the newest versions from the {apiName} API.\n\nError Code: {errorCode}\nError: {errorMessage}\n\nShowing locally stored versions instead.";
-                
+
                 MessageBox.Show(
                     message,
                     "API Error",
                     MessageBoxButtons.OK,
                     MessageBoxIcon.Warning);
-                
-                // Fall back to embedded JSON
-                LoadVersionsFromEmbeddedJson(ref latestVersion);
+
+                // Fall back to embedded JSON when available
+                if (!string.IsNullOrEmpty(embeddedResourceName))
+                {
+                    LoadVersionsFromEmbeddedJson(embeddedResourceName, ref latestVersion);
+                }
             }
 
             // Populate combo with all versions
@@ -1168,12 +1186,14 @@ namespace MC_Server_Manager_3
         }
 
         private void LoadVersionsFromEmbeddedJson(ref string latestVersion)
+            => LoadVersionsFromEmbeddedJson("MC_Server_Manager_3.paper-versions.json", ref latestVersion);
+
+        private void LoadVersionsFromEmbeddedJson(string resourceName, ref string latestVersion)
         {
             versionUrls.Clear();
 
             // Read from embedded resource
             var assembly = System.Reflection.Assembly.GetExecutingAssembly();
-            var resourceName = "MC_Server_Manager_3.paper-versions.json";
 
             try
             {
@@ -1202,7 +1222,7 @@ namespace MC_Server_Manager_3
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Failed to load embedded paper-versions.json: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Failed to load embedded {resourceName}: {ex.Message}");
                 versionUrls.Clear();
             }
         }
