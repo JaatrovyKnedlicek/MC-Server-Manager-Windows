@@ -51,6 +51,7 @@ namespace MC_Server_Manager_3
             cmbServerSoftware.Items.Add("Paper");
             cmbServerSoftware.Items.Add("Purpur");
             cmbServerSoftware.Items.Add("Folia");
+            cmbServerSoftware.Items.Add("Mohist");
             cmbServerSoftware.Items.Add("Fabric");
             cmbServerSoftware.Items.Add("Forge");
             cmbServerSoftware.Items.Add("NeoForge");
@@ -107,6 +108,10 @@ namespace MC_Server_Manager_3
                 {
                     await LoadFoliaVersionsAsync();
                 }
+                else if (software == "Mohist")
+                {
+                    await LoadMohistVersionsAsync();
+                }
                 else
                 {
                     await LoadPaperVersionsAsync();
@@ -133,6 +138,44 @@ namespace MC_Server_Manager_3
         private async Task LoadFoliaVersionsAsync()
         {
             await LoadPaperLikeVersionsAsync("folia", "Folia", null);
+        }
+
+        private async Task LoadMohistVersionsAsync()
+        {
+            versionUrls.Clear();
+            string latestVersion = "1.20.1";
+
+            // Note: Mohist's official API (mohistmc.com/api/) is currently unavailable.
+            // These are known supported versions. Users must download JARs manually or
+            // obtain builds from: https://github.com/MohistMC/Mohist/releases
+            // 
+            // To enable automatic downloads, provide actual JAR URLs in the dictionary below.
+            var mohistVersions = new Dictionary<string, string>
+            {
+                // Format: { "mc_version", "download_url_to_jar" }
+                // Example: { "1.20.1", "https://example.com/builds/mohist-1.20.1.jar" }
+                { "1.20.1", "" },
+                { "1.20.4", "" },
+                { "1.19.2", "" },
+                { "1.18.2", "" }
+            };
+
+            foreach (var kvp in mohistVersions)
+            {
+                versionUrls[kvp.Key] = kvp.Value;
+            }
+
+            // Show informational message about Mohist API status
+            var message = "Mohist - Minecraft Server Software\n\n" +
+                "Status: Automatic version downloads are currently unavailable (API offline).\n\n" +
+                "To use Mohist:\n" +
+                "1. Download the JAR from: https://github.com/MohistMC/Mohist/releases\n" +
+                "2. Select the version from the dropdown\n" +
+                "3. When prompted for download, manually provide the JAR location\n\n" +
+                "Supported versions: 1.20.1, 1.20.4, 1.19.2, 1.18.2";
+
+            MessageBox.Show(message, "Mohist Server Software", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            PopulateVersionDropdown(latestVersion);
         }
 
         private async Task LoadPaperLikeVersionsAsync(string projectName, string apiDisplayName, string embeddedResourceName)
