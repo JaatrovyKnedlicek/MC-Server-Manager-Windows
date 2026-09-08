@@ -51,6 +51,7 @@ namespace MC_Server_Manager_3
             cmbServerSoftware.Items.Add("Paper");
             cmbServerSoftware.Items.Add("Purpur");
             cmbServerSoftware.Items.Add("Folia");
+            cmbServerSoftware.Items.Add("Arclight");
             cmbServerSoftware.Items.Add("Mohist");
             cmbServerSoftware.Items.Add("Fabric");
             cmbServerSoftware.Items.Add("Forge");
@@ -108,6 +109,10 @@ namespace MC_Server_Manager_3
                 {
                     await LoadFoliaVersionsAsync();
                 }
+                else if (software == "Arclight")
+                {
+                    await LoadArclightVersionsAsync();
+                }
                 else if (software == "Mohist")
                 {
                     await LoadMohistVersionsAsync();
@@ -138,6 +143,41 @@ namespace MC_Server_Manager_3
         private async Task LoadFoliaVersionsAsync()
         {
             await LoadPaperLikeVersionsAsync("folia", "Folia", null);
+        }
+
+        private async Task LoadArclightVersionsAsync()
+        {
+            versionUrls.Clear();
+            string latestVersion = "1.20.1";
+
+            // Arclight is a Forge-based server mod. Load versions from their GitHub releases
+            // or use a fallback list of known versions with their respective build URLs
+            var arclightVersions = new Dictionary<string, string>
+            {
+                // Format: { "mc_version", "download_url_to_jar" }
+                // Arclight builds are typically available from GitHub or CurseForge
+                { "1.20.1", "" },
+                { "1.20.4", "" },
+                { "1.19.2", "" },
+                { "1.18.2", "" }
+            };
+
+            foreach (var kvp in arclightVersions)
+            {
+                versionUrls[kvp.Key] = kvp.Value;
+            }
+
+            // Show informational message about Arclight API status
+            var message = "Arclight - Minecraft Server Software\n\n" +
+                "Status: Automatic version downloads are currently unavailable (no public API).\n\n" +
+                "To use Arclight:\n" +
+                "1. Download from CurseForge or GitHub: https://github.com/IzzelAliz/Arclight\n" +
+                "2. Select the version from the dropdown\n" +
+                "3. When prompted for download, manually provide the JAR location\n\n" +
+                "Supported versions: 1.20.1, 1.20.4, 1.19.2, 1.18.2";
+
+            MessageBox.Show(message, "Arclight Server Software", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            PopulateVersionDropdown(latestVersion);
         }
 
         private async Task LoadMohistVersionsAsync()

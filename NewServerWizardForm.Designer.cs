@@ -55,7 +55,7 @@ namespace MC_Server_Manager_3
             panelStep1.Controls.Add(loadingPanel);
             panelStep1.Location = new System.Drawing.Point(12, 12);
             panelStep1.Name = "panelStep1";
-            panelStep1.Size = new System.Drawing.Size(520, 150);
+            panelStep1.Size = new System.Drawing.Size(550, 170);
             panelStep1.TabIndex = 0;
 
             // lblName
@@ -96,6 +96,7 @@ namespace MC_Server_Manager_3
             cmbVersions.Location = new System.Drawing.Point(10, 130);
             cmbVersions.Name = "cmbVersions";
             cmbVersions.Size = new System.Drawing.Size(240, 23);
+            cmbVersions.DropDownHeight = 200;
 
             // loadingPanel
             loadingPanel.Controls.Add(loadingLabel);
