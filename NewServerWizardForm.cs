@@ -148,36 +148,123 @@ namespace MC_Server_Manager_3
         private async Task LoadArclightVersionsAsync()
         {
             versionUrls.Clear();
-            string latestVersion = "1.20.1";
+            string latestVersion = null;
+            string errorMessage = null;
 
-            // Arclight is a Forge-based server mod. Load versions from their GitHub releases
-            // or use a fallback list of known versions with their respective build URLs
-            var arclightVersions = new Dictionary<string, string>
+            try
             {
-                // Format: { "mc_version", "download_url_to_jar" }
-                // Arclight builds are typically available from GitHub or CurseForge
-                { "1.20.1", "" },
-                { "1.20.4", "" },
-                { "1.19.2", "" },
-                { "1.18.2", "" }
-            };
+                using var http = new HttpClient();
+                http.Timeout = TimeSpan.FromSeconds(10);
+                http.DefaultRequestHeaders.UserAgent.ParseAdd("MCServerManager/3.5");
 
-            foreach (var kvp in arclightVersions)
+                // Fetch releases from Arclight GitHub repository
+                var response = await http.GetAsync("https://api.github.com/repos/IzzelAliz/Arclight/releases");
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    errorMessage = $"Failed to fetch Arclight releases: HTTP {(int)response.StatusCode}";
+                    System.Diagnostics.Debug.WriteLine(errorMessage);
+                }
+                else
+                {
+                    var content = await response.Content.ReadAsStringAsync();
+                    using var doc = JsonDocument.Parse(content);
+
+                    if (doc.RootElement.ValueKind == JsonValueKind.Array)
+                    {
+                        var versions = new System.Collections.Generic.List<string>();
+
+                        foreach (var release in doc.RootElement.EnumerateArray())
+                        {
+                            // Skip draft and prerelease versions
+                            if (release.TryGetProperty("draft", out var draftProp) && draftProp.GetBoolean())
+                                continue;
+
+                            // Get release tag (e.g., "arclight-1.20.1-1.0.100")
+                            if (release.TryGetProperty("tag_name", out var tagProp))
+                            {
+                                var tag = tagProp.GetString() ?? "";
+
+                                // Extract Minecraft version from tag (e.g., "1.20.1" from "arclight-1.20.1-1.0.100")
+                                // Format: arclight-<mc_version>-<mod_version>
+                                var parts = tag.Split('-');
+                                if (parts.Length >= 3)
+                                {
+                                    var mcVersion = parts[1]; // Get the second part as MC version
+
+                                    // Find the JAR download URL
+                                    if (release.TryGetProperty("assets", out var assetsProp))
+                                    {
+                                        foreach (var asset in assetsProp.EnumerateArray())
+                                        {
+                                            if (asset.TryGetProperty("name", out var nameProp))
+                                            {
+                                                var name = nameProp.GetString() ?? "";
+
+                                                // Look for .jar file
+                                                if (name.EndsWith(".jar", StringComparison.OrdinalIgnoreCase))
+                                                {
+                                                    if (asset.TryGetProperty("browser_download_url", out var urlProp))
+                                                    {
+                                                        var downloadUrl = urlProp.GetString();
+                                                        if (!string.IsNullOrEmpty(downloadUrl) && !versions.Contains(mcVersion))
+                                                        {
+                                                            versionUrls[mcVersion] = downloadUrl;
+                                                            versions.Add(mcVersion);
+                                                            if (latestVersion == null)
+                                                                latestVersion = mcVersion;
+                                                        }
+                                                    }
+                                                    break;
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        if (versions.Count == 0)
+                        {
+                            errorMessage = "No Arclight releases found on GitHub.";
+                        }
+                    }
+                }
+            }
+            catch (HttpRequestException ex)
             {
-                versionUrls[kvp.Key] = kvp.Value;
+                errorMessage = $"Network error fetching Arclight versions: {ex.Message}";
+                System.Diagnostics.Debug.WriteLine(errorMessage);
+            }
+            catch (JsonException ex)
+            {
+                errorMessage = $"Error parsing Arclight API response: {ex.Message}";
+                System.Diagnostics.Debug.WriteLine(errorMessage);
+            }
+            catch (Exception ex)
+            {
+                errorMessage = $"Unexpected error loading Arclight versions: {ex.Message}";
+                System.Diagnostics.Debug.WriteLine(errorMessage);
             }
 
-            // Show informational message about Arclight API status
-            var message = "Arclight - Minecraft Server Software\n\n" +
-                "Status: Automatic version downloads are currently unavailable (no public API).\n\n" +
-                "To use Arclight:\n" +
-                "1. Download from CurseForge or GitHub: https://github.com/IzzelAliz/Arclight\n" +
-                "2. Select the version from the dropdown\n" +
-                "3. When prompted for download, manually provide the JAR location\n\n" +
-                "Supported versions: 1.20.1, 1.20.4, 1.19.2, 1.18.2";
+            if (!string.IsNullOrEmpty(errorMessage))
+            {
+                MessageBox.Show(errorMessage, "Arclight - Error Loading Versions", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
 
-            MessageBox.Show(message, "Arclight Server Software", MessageBoxButtons.OK, MessageBoxIcon.Information);
-            PopulateVersionDropdown(latestVersion);
+            if (latestVersion != null)
+            {
+                PopulateVersionDropdown(latestVersion);
+            }
+            else
+            {
+                // Fallback with empty URLs
+                versionUrls["1.20.1"] = "";
+                versionUrls["1.20.4"] = "";
+                versionUrls["1.19.2"] = "";
+                versionUrls["1.18.2"] = "";
+                PopulateVersionDropdown("1.20.1");
+            }
         }
 
         private async Task LoadMohistVersionsAsync()
