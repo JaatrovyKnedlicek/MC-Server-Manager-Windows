@@ -36,9 +36,6 @@ namespace MC_Server_Manager_3
         private float currentDiskUsagePercent = 0;
         private float currentDiskReadMBps = 0;
         private float currentDiskWriteMBps = 0;
-        private long lastDiskReadBytes = 0;
-        private long lastDiskWriteBytes = 0;
-        private DateTime lastDiskCheck = DateTime.Now;
 
         private System.Windows.Forms.Timer? updateTimer;
         private readonly object lockObject = new object();
@@ -237,41 +234,23 @@ namespace MC_Server_Manager_3
 
                     if (diskReadCounter != null && diskWriteCounter != null)
                     {
-                        var now = DateTime.Now;
-                        var elapsed = (now - lastDiskCheck).TotalSeconds;
+                        // Disk counters return instantaneous bytes/sec, not cumulative values
+                        float currentReadBytesPerSec = diskReadCounter.NextValue();
+                        float currentWriteBytesPerSec = diskWriteCounter.NextValue();
 
-                        if (elapsed > 0 && lastDiskReadBytes > 0)
-                        {
-                            long currentReadBytes = (long)diskReadCounter.NextValue();
-                            long currentWriteBytes = (long)diskWriteCounter.NextValue();
+                        // Calculate MB/s (ensure non-negative)
+                        currentDiskReadMBps = Math.Max(0, currentReadBytesPerSec / (1024 * 1024));
+                        currentDiskWriteMBps = Math.Max(0, currentWriteBytesPerSec / (1024 * 1024));
 
-                            // Calculate MB/s
-                            float readBytesPerSec = (float)((currentReadBytes - lastDiskReadBytes) / elapsed);
-                            float writeBytesPerSec = (float)((currentWriteBytes - lastDiskWriteBytes) / elapsed);
+                        // Store for graph (normalize to reasonable scale, e.g., 100 MB/s max)
+                        float maxDiskSpeed = 100f; // 100 MB/s max for graph scaling
+                        diskReadHistory.Enqueue(Math.Min(currentDiskReadMBps / maxDiskSpeed * 100f, 100));
+                        diskWriteHistory.Enqueue(Math.Min(currentDiskWriteMBps / maxDiskSpeed * 100f, 100));
 
-                            currentDiskReadMBps = readBytesPerSec / (1024 * 1024);
-                            currentDiskWriteMBps = writeBytesPerSec / (1024 * 1024);
-
-                            // Store for graph (normalize to reasonable scale, e.g., 100 MB/s max)
-                            float maxDiskSpeed = 100f; // 100 MB/s max for graph scaling
-                            diskReadHistory.Enqueue(Math.Min(currentDiskReadMBps / maxDiskSpeed * 100f, 100));
-                            diskWriteHistory.Enqueue(Math.Min(currentDiskWriteMBps / maxDiskSpeed * 100f, 100));
-
-                            if (diskReadHistory.Count > 120)
-                                diskReadHistory.Dequeue();
-                            if (diskWriteHistory.Count > 120)
-                                diskWriteHistory.Dequeue();
-
-                            lastDiskReadBytes = currentReadBytes;
-                            lastDiskWriteBytes = currentWriteBytes;
-                        }
-                        else
-                        {
-                            // First call - initialize
-                            lastDiskReadBytes = (long)diskReadCounter.NextValue();
-                            lastDiskWriteBytes = (long)diskWriteCounter.NextValue();
-                        }
-                        lastDiskCheck = now;
+                        if (diskReadHistory.Count > 120)
+                            diskReadHistory.Dequeue();
+                        if (diskWriteHistory.Count > 120)
+                            diskWriteHistory.Dequeue();
                     }
                 }
                 catch { }
