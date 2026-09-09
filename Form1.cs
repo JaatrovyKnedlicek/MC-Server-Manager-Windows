@@ -78,6 +78,11 @@ namespace MC_Server_Manager_3
             // UPnP port forwarding
             public bool UpnpEnabled { get; set; } = false;
 
+            // RCON configuration
+            public bool RconEnabled { get; set; } = false;
+            public int RconPort { get; set; } = 25575;
+            public string RconPassword { get; set; } = string.Empty;
+
             // process instance when running (may be detached)
             [JsonIgnore]
             public Process? ProcessInstance { get; set; }
@@ -268,6 +273,9 @@ namespace MC_Server_Manager_3
             public string PostShutdownScriptType { get; set; } = "ps1";
             public string PostShutdownScriptFile { get; set; } = string.Empty;
             public bool UpnpEnabled { get; set; } = false;
+            public bool RconEnabled { get; set; } = false;
+            public int RconPort { get; set; } = 25575;
+            public string RconPassword { get; set; } = string.Empty;
         }
 
         public Form1()
@@ -331,7 +339,10 @@ namespace MC_Server_Manager_3
                                     PostShutdownEnabled = cfg.PostShutdownEnabled,
                                     PostShutdownScriptType = string.IsNullOrEmpty(cfg.PostShutdownScriptType) ? "ps1" : cfg.PostShutdownScriptType,
                                     PostShutdownScriptFile = cfg.PostShutdownScriptFile ?? string.Empty,
-                                    UpnpEnabled = cfg.UpnpEnabled
+                                    UpnpEnabled = cfg.UpnpEnabled,
+                                    RconEnabled = cfg.RconEnabled,
+                                    RconPort = cfg.RconPort,
+                                    RconPassword = cfg.RconPassword ?? string.Empty
                                 };
                                 servers.Add(si);
                                 continue;
@@ -393,6 +404,7 @@ namespace MC_Server_Manager_3
                 lblPortValue.Text = "N/A";
                 lblStatusValue.Text = "Stopped";
                 listBoxPlayers.Items.Clear();
+                if (lblRconValue != null) lblRconValue.Text = "Disabled";
 
                 // keep Start disabled when nothing is selected
                 btnStartServer.Enabled = false;
@@ -406,6 +418,21 @@ namespace MC_Server_Manager_3
             lblVersionValue.Text = s.Version;
             lblServerSoftwareValue.Text = s.ServerSoftware;
             lblPortValue.Text = s.Port.ToString();
+
+            // Show RCON status
+            if (lblRconValue != null)
+            {
+                if (s.RconEnabled)
+                {
+                    lblRconValue.Text = $"Enabled (Port {s.RconPort})";
+                    lblRconValue.ForeColor = Color.Green;
+                }
+                else
+                {
+                    lblRconValue.Text = "Disabled";
+                    lblRconValue.ForeColor = Color.Gray;
+                }
+            }
 
             // Show LAN (private) IP immediately and fetch public IP asynchronously
             var lan = GetLocalIPv4Address();
@@ -911,7 +938,10 @@ namespace MC_Server_Manager_3
                 Port = port,
                 RamMB = dlg.ServerRamMB,
                 PropertiesFileName = string.Empty, // no server.properties
-                EulaAccepted = dlg.EulaAccepted
+                EulaAccepted = dlg.EulaAccepted,
+                RconEnabled = false,
+                RconPort = 25575,
+                RconPassword = string.Empty
             };
 
             var configJson = JsonSerializer.Serialize(cfg, new JsonSerializerOptions { WriteIndented = true });
@@ -1503,6 +1533,50 @@ namespace MC_Server_Manager_3
             }
         }
 
+        private void rconConsoleToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            if (SelectedIndex < 0) { MessageBox.Show("Select a server first.", "RCON Console", MessageBoxButtons.OK, MessageBoxIcon.Information); return; }
+            var s = servers[SelectedIndex];
+
+            if (!s.RconEnabled)
+            {
+                MessageBox.Show("RCON is not enabled for this server. Please enable RCON in server settings first.", "RCON Console", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            if (string.IsNullOrEmpty(s.RconPassword))
+            {
+                MessageBox.Show("RCON password is not set. Please configure RCON password in server settings.", "RCON Console", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            using var rconForm = new RconConsoleForm(s.IP, s.RconPort, s.RconPassword);
+            rconForm.ShowDialog(this);
+        }
+
+        private void rconSettingsToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            if (SelectedIndex < 0) { MessageBox.Show("Select a server first.", "RCON Settings", MessageBoxButtons.OK, MessageBoxIcon.Information); return; }
+            var s = servers[SelectedIndex];
+
+            using var dlg = new RconSettingsForm(s.RconEnabled, s.RconPort, s.RconPassword);
+            if (dlg.ShowDialog(this) == DialogResult.OK)
+            {
+                s.RconEnabled = dlg.RconEnabled;
+                s.RconPort = dlg.RconPort;
+                s.RconPassword = dlg.RconPassword;
+
+                try
+                {
+                    SaveServerConfig(s);
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Failed to save RCON settings: {ex.Message}", "RCON Settings", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+            }
+        }
+
         // Check if server port is open and available to the public
         private async Task CheckPortAvailabilityAsync(ServerInfo server, int port, PortCheckResultsForm resultsForm)
         {
@@ -1994,7 +2068,10 @@ namespace MC_Server_Manager_3
                 PostShutdownEnabled = s.PostShutdownEnabled,
                 PostShutdownScriptType = s.PostShutdownScriptType,
                 PostShutdownScriptFile = s.PostShutdownScriptFile,
-                UpnpEnabled = s.UpnpEnabled
+                UpnpEnabled = s.UpnpEnabled,
+                RconEnabled = s.RconEnabled,
+                RconPort = s.RconPort,
+                RconPassword = s.RconPassword
             };
             var configJson = JsonSerializer.Serialize(cfg, new JsonSerializerOptions { WriteIndented = true });
             File.WriteAllText(Path.Combine(s.FolderPath, "config.json"), configJson);

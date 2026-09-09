@@ -35,6 +35,8 @@ namespace MC_Server_Manager_3
             experimentalToolStripMenuItem = new ToolStripMenuItem();
             upnpSettingsToolStripMenuItem = new ToolStripMenuItem();
             performanceGraphsToolStripMenuItem = new ToolStripMenuItem();
+            rconConsoleToolStripMenuItem = new ToolStripMenuItem();
+            rconSettingsToolStripMenuItem = new ToolStripMenuItem();
             editToolStripMenuItem = new ToolStripMenuItem();
             viewToolStripMenuItem = new ToolStripMenuItem();
             statusBarToolStripMenuItem = new ToolStripMenuItem();
@@ -57,6 +59,8 @@ namespace MC_Server_Manager_3
             lblPortValue = new Label();
             labelPlayersTitle = new Label();
             listBoxPlayers = new ListBox();
+            labelRconTitle = new Label();
+            lblRconValue = new Label();
             label2 = new Label();
             btnDeleteServer = new Button();
             btnEditProperties = new Button();
@@ -96,7 +100,7 @@ namespace MC_Server_Manager_3
             // 
             // toolsToolStripMenuItem
             // 
-            toolsToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { openServerFolderToolStripMenuItem, openPluginsFolderToolStripMenuItem, cleanLogsFolderToolStripMenuItem, openRouterSettingsToolStripMenuItem, serverPropertiesToolStripMenuItem, editRamToolStripMenuItem, backupWorldToolStripMenuItem, backupServerToolStripMenuItem, postShutdownActionsToolStripMenuItem, statusWebsiteToolStripMenuItem, discordWebhookToolStripMenuItem, killServerToolStripMenuItem, serverIconToolStripMenuItem, upnpSettingsToolStripMenuItem, performanceGraphsToolStripMenuItem, experimentalToolStripMenuItem });
+            toolsToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { openServerFolderToolStripMenuItem, openPluginsFolderToolStripMenuItem, cleanLogsFolderToolStripMenuItem, openRouterSettingsToolStripMenuItem, serverPropertiesToolStripMenuItem, editRamToolStripMenuItem, backupWorldToolStripMenuItem, backupServerToolStripMenuItem, postShutdownActionsToolStripMenuItem, statusWebsiteToolStripMenuItem, discordWebhookToolStripMenuItem, killServerToolStripMenuItem, serverIconToolStripMenuItem, upnpSettingsToolStripMenuItem, performanceGraphsToolStripMenuItem, rconConsoleToolStripMenuItem, rconSettingsToolStripMenuItem, experimentalToolStripMenuItem });
             toolsToolStripMenuItem.Name = "toolsToolStripMenuItem";
             toolsToolStripMenuItem.Size = new Size(47, 20);
             toolsToolStripMenuItem.Text = "Tools";
@@ -210,6 +214,20 @@ namespace MC_Server_Manager_3
             performanceGraphsToolStripMenuItem.Text = "Show Performance Graphs";
             performanceGraphsToolStripMenuItem.Click += performanceGraphsToolStripMenuItem_Click;
             // 
+            // rconConsoleToolStripMenuItem
+            // 
+            rconConsoleToolStripMenuItem.Name = "rconConsoleToolStripMenuItem";
+            rconConsoleToolStripMenuItem.Size = new Size(203, 22);
+            rconConsoleToolStripMenuItem.Text = "RCON Console";
+            rconConsoleToolStripMenuItem.Click += rconConsoleToolStripMenuItem_Click;
+            // 
+            // rconSettingsToolStripMenuItem
+            // 
+            rconSettingsToolStripMenuItem.Name = "rconSettingsToolStripMenuItem";
+            rconSettingsToolStripMenuItem.Size = new Size(203, 22);
+            rconSettingsToolStripMenuItem.Text = "RCON Settings";
+            rconSettingsToolStripMenuItem.Click += rconSettingsToolStripMenuItem_Click;
+            // 
             // experimentalToolStripMenuItem
             // 
             experimentalToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { checkPortAvailabilityToolStripMenuItem });
@@ -315,6 +333,8 @@ namespace MC_Server_Manager_3
             groupBoxInfo.Controls.Add(lblPortValue);
             groupBoxInfo.Controls.Add(labelPlayersTitle);
             groupBoxInfo.Controls.Add(listBoxPlayers);
+            groupBoxInfo.Controls.Add(labelRconTitle);
+            groupBoxInfo.Controls.Add(lblRconValue);
             groupBoxInfo.Location = new Point(228, 90);
             groupBoxInfo.Name = "groupBoxInfo";
             groupBoxInfo.Size = new Size(840, 420);
@@ -431,6 +451,24 @@ namespace MC_Server_Manager_3
             listBoxPlayers.TabIndex = 7;
             listBoxPlayers.Visible = false;
             // 
+            // labelRconTitle
+            // 
+            labelRconTitle.AutoSize = true;
+            labelRconTitle.Location = new Point(12, 161);
+            labelRconTitle.Name = "labelRconTitle";
+            labelRconTitle.Size = new Size(50, 15);
+            labelRconTitle.TabIndex = 8;
+            labelRconTitle.Text = "RCON:";
+            // 
+            // lblRconValue
+            // 
+            lblRconValue.AutoSize = true;
+            lblRconValue.Location = new Point(82, 161);
+            lblRconValue.Name = "lblRconValue";
+            lblRconValue.Size = new Size(60, 15);
+            lblRconValue.TabIndex = 9;
+            lblRconValue.Text = "Disabled";
+            // 
             // label2
             // 
             label2.AutoSize = true;
@@ -519,6 +557,8 @@ namespace MC_Server_Manager_3
         private Label lblPortValue;
         private Label labelPlayersTitle;
         private ListBox listBoxPlayers;
+        private Label labelRconTitle;
+        private Label lblRconValue;
         private Label label2;
         private Button btnDeleteServer;
         private Button btnEditProperties;
@@ -540,5 +580,7 @@ namespace MC_Server_Manager_3
         private ToolStripMenuItem experimentalToolStripMenuItem;
         private ToolStripMenuItem upnpSettingsToolStripMenuItem;
         private ToolStripMenuItem performanceGraphsToolStripMenuItem;
+        private ToolStripMenuItem rconConsoleToolStripMenuItem;
+        private ToolStripMenuItem rconSettingsToolStripMenuItem;
     }
 }
