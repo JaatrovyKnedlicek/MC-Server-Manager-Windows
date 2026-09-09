@@ -1,0 +1,3 @@
+3.5
+- Support for Folia, Arclight, Mohist added
+- Performance graphs monitoring CPU, RAM and Network usage added.

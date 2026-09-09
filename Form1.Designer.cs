@@ -34,6 +34,7 @@ namespace MC_Server_Manager_3
             serverIconToolStripMenuItem = new ToolStripMenuItem();
             experimentalToolStripMenuItem = new ToolStripMenuItem();
             upnpSettingsToolStripMenuItem = new ToolStripMenuItem();
+            performanceGraphsToolStripMenuItem = new ToolStripMenuItem();
             editToolStripMenuItem = new ToolStripMenuItem();
             viewToolStripMenuItem = new ToolStripMenuItem();
             statusBarToolStripMenuItem = new ToolStripMenuItem();
@@ -95,7 +96,7 @@ namespace MC_Server_Manager_3
             // 
             // toolsToolStripMenuItem
             // 
-            toolsToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { openServerFolderToolStripMenuItem, openPluginsFolderToolStripMenuItem, cleanLogsFolderToolStripMenuItem, openRouterSettingsToolStripMenuItem, serverPropertiesToolStripMenuItem, editRamToolStripMenuItem, backupWorldToolStripMenuItem, backupServerToolStripMenuItem, postShutdownActionsToolStripMenuItem, statusWebsiteToolStripMenuItem, discordWebhookToolStripMenuItem, killServerToolStripMenuItem, serverIconToolStripMenuItem, upnpSettingsToolStripMenuItem, experimentalToolStripMenuItem });
+            toolsToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { openServerFolderToolStripMenuItem, openPluginsFolderToolStripMenuItem, cleanLogsFolderToolStripMenuItem, openRouterSettingsToolStripMenuItem, serverPropertiesToolStripMenuItem, editRamToolStripMenuItem, backupWorldToolStripMenuItem, backupServerToolStripMenuItem, postShutdownActionsToolStripMenuItem, statusWebsiteToolStripMenuItem, discordWebhookToolStripMenuItem, killServerToolStripMenuItem, serverIconToolStripMenuItem, upnpSettingsToolStripMenuItem, performanceGraphsToolStripMenuItem, experimentalToolStripMenuItem });
             toolsToolStripMenuItem.Name = "toolsToolStripMenuItem";
             toolsToolStripMenuItem.Size = new Size(47, 20);
             toolsToolStripMenuItem.Text = "Tools";
@@ -198,6 +199,16 @@ namespace MC_Server_Manager_3
             upnpSettingsToolStripMenuItem.Size = new Size(203, 22);
             upnpSettingsToolStripMenuItem.Text = "UPnP Port Forwarding";
             upnpSettingsToolStripMenuItem.Click += upnpSettingsToolStripMenuItem_Click;
+            // 
+            // performanceGraphsToolStripMenuItem
+            // 
+            performanceGraphsToolStripMenuItem.Checked = false;
+            performanceGraphsToolStripMenuItem.CheckOnClick = true;
+            performanceGraphsToolStripMenuItem.CheckState = CheckState.Unchecked;
+            performanceGraphsToolStripMenuItem.Name = "performanceGraphsToolStripMenuItem";
+            performanceGraphsToolStripMenuItem.Size = new Size(203, 22);
+            performanceGraphsToolStripMenuItem.Text = "Show Performance Graphs";
+            performanceGraphsToolStripMenuItem.Click += performanceGraphsToolStripMenuItem_Click;
             // 
             // experimentalToolStripMenuItem
             // 
@@ -528,5 +539,6 @@ namespace MC_Server_Manager_3
         private ToolStripMenuItem serverIconToolStripMenuItem;
         private ToolStripMenuItem experimentalToolStripMenuItem;
         private ToolStripMenuItem upnpSettingsToolStripMenuItem;
+        private ToolStripMenuItem performanceGraphsToolStripMenuItem;
     }
 }

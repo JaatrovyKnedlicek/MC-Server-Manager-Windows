@@ -50,6 +50,7 @@ namespace MC_Server_Manager_3
 
         private StatusWebsiteHost? statusWebsiteHost;
         private string cachedPublicIp = "...";
+        private PerformanceGraphsPanel? performanceGraphsPanel;
 
         // servers storage
         private readonly List<ServerInfo> servers = new List<ServerInfo>();
@@ -1469,6 +1470,36 @@ namespace MC_Server_Manager_3
 
                 PopulateServerList();
                 LoadSelectedServerInfo();
+            }
+        }
+
+        private void performanceGraphsToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            if (performanceGraphsToolStripMenuItem.Checked)
+            {
+                // Show performance graphs
+                if (performanceGraphsPanel == null)
+                {
+                    performanceGraphsPanel = new PerformanceGraphsPanel
+                    {
+                        Dock = DockStyle.Bottom,
+                        Height = 320
+                    };
+                    Controls.Add(performanceGraphsPanel);
+                    performanceGraphsPanel.BringToFront();
+                }
+                else
+                {
+                    performanceGraphsPanel.Visible = true;
+                }
+            }
+            else
+            {
+                // Hide performance graphs
+                if (performanceGraphsPanel != null)
+                {
+                    performanceGraphsPanel.Visible = false;
+                }
             }
         }
 
