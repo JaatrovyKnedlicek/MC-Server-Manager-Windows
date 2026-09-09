@@ -263,14 +263,73 @@ namespace MC_Server_Manager_3
 
             lock (lockObject)
             {
-                int graphWidth = 300; // Fixed width instead of full width
-                int graphHeight = Height / 4;
-                int xOffset = 10;
+                int graphWidth = 300;
+                int graphHeight = 200;
+                int padding = 10;
+                
+                // Calculate how many graphs can fit in a row
+                int availableWidth = Width - (padding * 2);
+                int graphsPerRow = Math.Max(1, availableWidth / (graphWidth + padding));
+                
+                // Calculate total rows needed
+                int totalGraphs = 4;
+                int totalRows = (int)Math.Ceiling((double)totalGraphs / graphsPerRow);
+                
+                // Adjust graph height to fit all rows
+                if (totalRows > 0)
+                {
+                    graphHeight = Math.Max(150, (Height - (padding * 2)) / totalRows);
+                }
 
-                DrawCpuGraph(e.Graphics, cpuHistory, xOffset, 0, graphWidth, graphHeight, Color.FromArgb(0, 120, 255));
-                DrawRamGraph(e.Graphics, ramHistory, xOffset, graphHeight, graphWidth, graphHeight, Color.FromArgb(0, 200, 0));
-                DrawNetworkGraph(e.Graphics, networkDownloadHistory, networkUploadHistory, xOffset, graphHeight * 2, graphWidth, graphHeight);
-                DrawDiskGraph(e.Graphics, diskUsageHistory, diskReadHistory, diskWriteHistory, xOffset, graphHeight * 3, graphWidth, graphHeight);
+                // Draw graphs in grid layout
+                int currentX = padding;
+                int currentY = padding;
+                int graphsInCurrentRow = 0;
+
+                // CPU Graph
+                DrawCpuGraph(e.Graphics, cpuHistory, currentX, currentY, graphWidth, graphHeight, Color.FromArgb(0, 120, 255));
+                graphsInCurrentRow++;
+                if (graphsInCurrentRow >= graphsPerRow)
+                {
+                    currentX = padding;
+                    currentY += graphHeight + padding;
+                    graphsInCurrentRow = 0;
+                }
+                else
+                {
+                    currentX += graphWidth + padding;
+                }
+
+                // RAM Graph
+                DrawRamGraph(e.Graphics, ramHistory, currentX, currentY, graphWidth, graphHeight, Color.FromArgb(0, 200, 0));
+                graphsInCurrentRow++;
+                if (graphsInCurrentRow >= graphsPerRow)
+                {
+                    currentX = padding;
+                    currentY += graphHeight + padding;
+                    graphsInCurrentRow = 0;
+                }
+                else
+                {
+                    currentX += graphWidth + padding;
+                }
+
+                // Network Graph
+                DrawNetworkGraph(e.Graphics, networkDownloadHistory, networkUploadHistory, currentX, currentY, graphWidth, graphHeight);
+                graphsInCurrentRow++;
+                if (graphsInCurrentRow >= graphsPerRow)
+                {
+                    currentX = padding;
+                    currentY += graphHeight + padding;
+                    graphsInCurrentRow = 0;
+                }
+                else
+                {
+                    currentX += graphWidth + padding;
+                }
+
+                // Disk Graph
+                DrawDiskGraph(e.Graphics, diskUsageHistory, diskReadHistory, diskWriteHistory, currentX, currentY, graphWidth, graphHeight);
             }
         }
 
