@@ -440,7 +440,7 @@ namespace MC_Server_Manager_3
             labelPlayersTitle.Size = new Size(47, 15);
             labelPlayersTitle.TabIndex = 6;
             labelPlayersTitle.Text = "Players:";
-            labelPlayersTitle.Visible = false;
+            labelPlayersTitle.Visible = true;
             // 
             // listBoxPlayers
             // 
@@ -449,12 +449,12 @@ namespace MC_Server_Manager_3
             listBoxPlayers.Name = "listBoxPlayers";
             listBoxPlayers.Size = new Size(200, 139);
             listBoxPlayers.TabIndex = 7;
-            listBoxPlayers.Visible = false;
+            listBoxPlayers.Visible = true;
             // 
             // labelRconTitle
             // 
             labelRconTitle.AutoSize = true;
-            labelRconTitle.Location = new Point(12, 161);
+            labelRconTitle.Location = new Point(230, 161);
             labelRconTitle.Name = "labelRconTitle";
             labelRconTitle.Size = new Size(50, 15);
             labelRconTitle.TabIndex = 8;
@@ -463,7 +463,7 @@ namespace MC_Server_Manager_3
             // lblRconValue
             // 
             lblRconValue.AutoSize = true;
-            lblRconValue.Location = new Point(82, 161);
+            lblRconValue.Location = new Point(300, 161);
             lblRconValue.Name = "lblRconValue";
             lblRconValue.Size = new Size(60, 15);
             lblRconValue.TabIndex = 9;

@@ -47,6 +47,9 @@ namespace MC_Server_Manager_3
 
         // Server process watcher timer
         private System.Windows.Forms.Timer? processWatcherTimer;
+        
+        // Player list refresh timer
+        private System.Windows.Forms.Timer? playerRefreshTimer;
 
         private StatusWebsiteHost? statusWebsiteHost;
         private string cachedPublicIp = "...";
@@ -298,6 +301,9 @@ namespace MC_Server_Manager_3
 
             // Start the process watcher timer
             InitializeProcessWatcher();
+            
+            // Start the player refresh timer
+            InitializePlayerRefreshTimer();
 
             _ = RefreshPublicIpAsync();
             TryStartStatusWebsiteFromSettings();
@@ -778,6 +784,8 @@ namespace MC_Server_Manager_3
                         {
                             LoadSelectedServerInfo();
                         });
+                        // Fetch players after successful connection
+                        _ = FetchPlayersFromRconAsync(s);
                         return; // Success, exit the retry loop
                     }
                     else
@@ -808,6 +816,75 @@ namespace MC_Server_Manager_3
             {
                 LoadSelectedServerInfo();
             });
+        }
+
+        // Fetch players from RCON using the 'list' command
+        private async Task FetchPlayersFromRconAsync(ServerInfo s)
+        {
+            if (!rconConnected || rconClient == null || !rconClient.IsAuthenticated)
+            {
+                return;
+            }
+
+            try
+            {
+                var response = await rconClient.SendCommandAsync("list");
+                if (!string.IsNullOrEmpty(response))
+                {
+                    // Parse the response. Expected format: "There are X out of Y max players online: player1, player2, ..."
+                    var players = ParsePlayerList(response);
+                    
+                    this.Invoke(() =>
+                    {
+                        s.Players.Clear();
+                        s.Players.AddRange(players);
+                        LoadSelectedServerInfo();
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Failed to fetch players from RCON: {ex.Message}");
+            }
+        }
+
+        // Parse player list from RCON response
+        private List<string> ParsePlayerList(string response)
+        {
+            var players = new List<string>();
+            
+            // RCON 'list' command response format: "There are X out of Y max players online: player1, player2, ..."
+            // Or: "There are 0/20 players online:"
+            
+            try
+            {
+                // Find the colon that separates the count from the player list
+                var colonIndex = response.IndexOf(':');
+                if (colonIndex >= 0 && colonIndex < response.Length - 1)
+                {
+                    var playerPart = response.Substring(colonIndex + 1).Trim();
+                    
+                    if (!string.IsNullOrEmpty(playerPart))
+                    {
+                        // Split by comma and trim each player name
+                        var playerNames = playerPart.Split(',');
+                        foreach (var name in playerNames)
+                        {
+                            var trimmedName = name.Trim();
+                            if (!string.IsNullOrEmpty(trimmedName))
+                            {
+                                players.Add(trimmedName);
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Failed to parse player list: {ex.Message}");
+            }
+            
+            return players;
         }
 
         // STOP SERVER: if we have a tracked Process instance, try graceful stop via stdin if possible,
@@ -2161,6 +2238,17 @@ namespace MC_Server_Manager_3
         }
 
         /// <summary>
+        /// Initialize and start the player list refresh timer
+        /// </summary>
+        private void InitializePlayerRefreshTimer()
+        {
+            playerRefreshTimer = new System.Windows.Forms.Timer();
+            playerRefreshTimer.Interval = 5000; // Refresh every 5 seconds
+            playerRefreshTimer.Tick += PlayerRefreshTimer_Tick;
+            playerRefreshTimer.Start();
+        }
+
+        /// <summary>
         /// Timer tick handler that monitors running server processes
         /// </summary>
         private void ProcessWatcherTimer_Tick(object? sender, EventArgs e)
@@ -2183,6 +2271,29 @@ namespace MC_Server_Manager_3
             catch
             {
                 // Silently ignore any errors in the watcher
+            }
+        }
+
+        /// <summary>
+        /// Timer tick handler that refreshes player list from RCON when connected
+        /// </summary>
+        private void PlayerRefreshTimer_Tick(object? sender, EventArgs e)
+        {
+            try
+            {
+                // Only refresh if we have a selected server and RCON is connected
+                if (SelectedIndex >= 0 && SelectedIndex < servers.Count)
+                {
+                    var s = servers[SelectedIndex];
+                    if (rconConnected && rconClient != null && rconClient.IsAuthenticated && s.Running)
+                    {
+                        _ = FetchPlayersFromRconAsync(s);
+                    }
+                }
+            }
+            catch
+            {
+                // Silently ignore any errors in the player refresh
             }
         }
 
