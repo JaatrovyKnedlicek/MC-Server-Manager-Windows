@@ -51,6 +51,8 @@ namespace MC_Server_Manager_3
         private StatusWebsiteHost? statusWebsiteHost;
         private string cachedPublicIp = "...";
         private PerformanceGraphsPanel? performanceGraphsPanel;
+        private RconClient? rconClient;
+        private bool rconConnected = false;
 
         // servers storage
         private readonly List<ServerInfo> servers = new List<ServerInfo>();
@@ -424,8 +426,16 @@ namespace MC_Server_Manager_3
             {
                 if (s.RconEnabled)
                 {
-                    lblRconValue.Text = $"Enabled (Port {s.RconPort})";
-                    lblRconValue.ForeColor = Color.Green;
+                    if (rconConnected && rconClient != null && rconClient.IsAuthenticated)
+                    {
+                        lblRconValue.Text = $"Connected (Port {s.RconPort})";
+                        lblRconValue.ForeColor = Color.Green;
+                    }
+                    else
+                    {
+                        lblRconValue.Text = $"Enabled (Port {s.RconPort}) - Not Connected";
+                        lblRconValue.ForeColor = Color.Orange;
+                    }
                 }
                 else
                 {
@@ -443,14 +453,17 @@ namespace MC_Server_Manager_3
             if (s.Running && s.ProcessInstance != null && !s.ProcessInstance.HasExited)
             {
                 lblStatusValue.Text = "Running";
-                // Disable Start button when server is running
-                btnStartServer.Enabled = false;
+                
+                // Show Stop button when server is running (with or without RCON)
+                btnStartServer.Text = "Stop";
+                btnStartServer.Enabled = true;
             }
             else
             {
                 lblStatusValue.Text = "Stopped";
                 s.Running = false; // ensure Running flag matches reality
                 // Enable Start button when server is stopped
+                btnStartServer.Text = "Start";
                 btnStartServer.Enabled = true;
             }
 
@@ -467,14 +480,29 @@ namespace MC_Server_Manager_3
             LoadSelectedServerInfo();
         }
 
-        // START SERVER: launch server via start.cmd in a new separate window (UseShellExecute=true).
-        private void btnStartServer_Click(object sender, EventArgs e)
+        // START/STOP SERVER: toggle between starting and gracefully stopping via RCON
+        private async void btnStartServer_Click(object sender, EventArgs e)
         {
             if (SelectedIndex < 0) { MessageBox.Show("Select a server first."); return; }
             var s = servers[SelectedIndex];
 
-            // removed the early return that prevented starting when already running
+            // Check if server is running - then perform stop
+            if (s.Running && s.ProcessInstance != null && !s.ProcessInstance.HasExited)
+            {
+                // If RCON is connected, perform graceful stop
+                if (rconConnected && rconClient != null && rconClient.IsAuthenticated)
+                {
+                    await PerformGracefulStopAsync(s);
+                }
+                else
+                {
+                    // Fallback to process-based stop (less graceful but functional)
+                    await PerformProcessStopAsync(s);
+                }
+                return;
+            }
 
+            // Otherwise, start the server
             if (string.IsNullOrEmpty(s.FolderPath) || !Directory.Exists(s.FolderPath))
             {
                 MessageBox.Show("Server folder not found.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
@@ -558,6 +586,12 @@ namespace MC_Server_Manager_3
                             }
                         });
                     }
+
+                    // Try to connect to RCON if enabled
+                    if (s.RconEnabled)
+                    {
+                        _ = Task.Run(async () => await TryConnectRconAsync(s));
+                    }
                 }
                 else
                 {
@@ -568,6 +602,212 @@ namespace MC_Server_Manager_3
             {
                 MessageBox.Show($"Failed to start server: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
+        }
+
+        // Process-based server shutdown (fallback when RCON is not available)
+        private async Task PerformProcessStopAsync(ServerInfo s, bool showWarning = true)
+        {
+            var proc = s.ProcessInstance;
+            if (proc == null || proc.HasExited)
+            {
+                MessageBox.Show("Server process is not running.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+
+            // Update UI to show stopping state
+            btnStartServer.Enabled = false;
+            btnStartServer.Text = "Stopping...";
+            lblStatusValue.Text = "Stopping...";
+
+            try
+            {
+                // Show warning about force kill since RCON is not available (only for button click)
+                if (showWarning)
+                {
+                    var result = MessageBox.Show(
+                        "RCON is not connected. The server will be forcefully terminated. This may cause data loss. Continue?",
+                        "Warning",
+                        MessageBoxButtons.YesNo,
+                        MessageBoxIcon.Warning);
+
+                    if (result != DialogResult.Yes)
+                    {
+                        // User chose not to force kill, revert UI state
+                        btnStartServer.Enabled = true;
+                        btnStartServer.Text = "Stop";
+                        lblStatusValue.Text = "Running";
+                        return;
+                    }
+                }
+
+                try
+                {
+                    proc.Kill(entireProcessTree: true);
+                    await proc.WaitForExitAsync();
+                    HandleServerProcessExited(s);
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Failed to stop server: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    // Revert UI state on error
+                    btnStartServer.Enabled = true;
+                    btnStartServer.Text = "Stop";
+                    lblStatusValue.Text = "Running";
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error during process stop: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                // Revert UI state on error
+                btnStartServer.Enabled = true;
+                btnStartServer.Text = "Stop";
+                lblStatusValue.Text = "Running";
+            }
+        }
+
+        // Graceful RCON-based server shutdown
+        private async Task PerformGracefulStopAsync(ServerInfo s)
+        {
+            if (rconClient == null || !rconClient.IsAuthenticated)
+            {
+                MessageBox.Show("RCON is not connected. Cannot perform graceful shutdown.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+
+            var proc = s.ProcessInstance;
+            if (proc == null || proc.HasExited)
+            {
+                MessageBox.Show("Server process is not running.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+
+            // Update UI to show stopping state
+            btnStartServer.Enabled = false;
+            btnStartServer.Text = "Stopping...";
+            lblStatusValue.Text = "Stopping...";
+
+            try
+            {
+                // Send the RCON "stop" command
+                await rconClient.SendCommandAsync("stop");
+
+                // Wait for the process to exit naturally with a 30-second timeout
+                var timeoutTask = Task.Delay(30000); // 30 seconds
+                var exitTask = proc.WaitForExitAsync();
+
+                var completedTask = await Task.WhenAny(exitTask, timeoutTask);
+
+                if (completedTask == timeoutTask)
+                {
+                    // Process didn't exit within 30 seconds, ask user about force kill
+                    var result = MessageBox.Show(
+                        "Server is taking too long to stop. Force kill?",
+                        "Timeout",
+                        MessageBoxButtons.YesNo,
+                        MessageBoxIcon.Question);
+
+                    if (result == DialogResult.Yes)
+                    {
+                        try
+                        {
+                            proc.Kill(entireProcessTree: true);
+                            await proc.WaitForExitAsync();
+                            HandleServerProcessExited(s);
+                        }
+                        catch (Exception ex)
+                        {
+                            MessageBox.Show($"Failed to force kill server: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                            // Revert UI state on error
+                            btnStartServer.Enabled = true;
+                            btnStartServer.Text = "Stop";
+                            lblStatusValue.Text = "Running";
+                        }
+                    }
+                    else
+                    {
+                        // User chose not to force kill, revert UI state
+                        btnStartServer.Enabled = true;
+                        btnStartServer.Text = "Stop";
+                        lblStatusValue.Text = "Running";
+                        return;
+                    }
+                }
+
+                // Process has exited, clean up
+                HandleServerProcessExited(s);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error during graceful shutdown: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                // Revert UI state on error
+                btnStartServer.Enabled = true;
+                btnStartServer.Text = "Stop";
+                lblStatusValue.Text = "Running";
+            }
+        }
+
+        // Try to connect to RCON when server starts
+        private async Task TryConnectRconAsync(ServerInfo s)
+        {
+            if (!s.RconEnabled || string.IsNullOrEmpty(s.RconPassword))
+            {
+                this.Invoke(() =>
+                {
+                    LoadSelectedServerInfo();
+                });
+                return;
+            }
+
+            // Retry connection multiple times since server might not be ready immediately
+            const int maxRetries = 10;
+            const int retryDelayMs = 2000; // 2 seconds between retries
+
+            for (int attempt = 0; attempt < maxRetries; attempt++)
+            {
+                try
+                {
+                    // Use localhost since we're running the server locally
+                    rconClient = new RconClient("127.0.0.1", s.RconPort, s.RconPassword);
+                    bool connected = await rconClient.ConnectAsync();
+
+                    if (connected)
+                    {
+                        rconConnected = true;
+                        // Update UI on the main thread
+                        this.Invoke(() =>
+                        {
+                            LoadSelectedServerInfo();
+                        });
+                        return; // Success, exit the retry loop
+                    }
+                    else
+                    {
+                        rconConnected = false;
+                        rconClient?.Dispose();
+                        rconClient = null;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    // Log the error for debugging
+                    System.Diagnostics.Debug.WriteLine($"RCON connection attempt {attempt + 1} failed: {ex.Message}");
+                    rconConnected = false;
+                    rconClient?.Dispose();
+                    rconClient = null;
+                }
+
+                // Wait before retrying (except on the last attempt)
+                if (attempt < maxRetries - 1)
+                {
+                    await Task.Delay(retryDelayMs);
+                }
+            }
+
+            // All retries failed, update UI to show button as disabled
+            this.Invoke(() =>
+            {
+                LoadSelectedServerInfo();
+            });
         }
 
         // STOP SERVER: if we have a tracked Process instance, try graceful stop via stdin if possible,
@@ -583,55 +823,8 @@ namespace MC_Server_Manager_3
                 return;
             }
 
-            var proc = s.ProcessInstance;
-            try
-            {
-                // If we launched with RedirectStandardInput (not the usual case for UseShellExecute),
-                // attempt graceful "stop" command.
-                if (!proc.HasExited && proc.StartInfo != null && proc.StartInfo.RedirectStandardInput)
-                {
-                    try
-                    {
-                        await proc.StandardInput.WriteLineAsync("stop");
-                        await proc.StandardInput.FlushAsync();
-                        // give it some time to exit normally
-                        if (!proc.WaitForExit(5000))
-                        {
-                            try { proc.Kill(true); } catch { }
-                            proc.WaitForExit(5000);
-                        }
-                    }
-                    catch
-                    {
-                        // if that fails fallback to kill
-                        try { proc.Kill(true); } catch { }
-                    }
-                }
-                else
-                {
-                    // We don't have stdin available (detached window). Kill the process tree.
-                    try
-                    {
-                        if (!proc.HasExited)
-                        {
-                            proc.Kill(entireProcessTree: true);
-                            proc.WaitForExit(5000);
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        MessageBox.Show($"Failed to terminate server process: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Error while stopping server: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
-            finally
-            {
-                HandleServerProcessExited(s);
-            }
+            // Use the new process-based stop method
+            await PerformProcessStopAsync(s);
         }
 
         // Console allocation methods kept but not used by default.
@@ -1725,6 +1918,14 @@ namespace MC_Server_Manager_3
 
         }
 
+        private void Form1_FormClosing(object sender, FormClosingEventArgs e)
+        {
+            // Clean up RCON client when form closes
+            rconClient?.Dispose();
+            rconClient = null;
+            rconConnected = false;
+        }
+
         /// <summary>
         /// Initialize and start the background process watcher timer
         /// </summary>
@@ -2083,6 +2284,11 @@ namespace MC_Server_Manager_3
             s.Running = false;
             s.ProcessInstance = null;
             s.Players.Clear();
+
+            // Clean up RCON connection
+            rconConnected = false;
+            rconClient?.Dispose();
+            rconClient = null;
 
             if (wasRunning)
             {

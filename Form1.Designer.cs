@@ -519,6 +519,7 @@ namespace MC_Server_Manager_3
             Name = "Form1";
             Text = "Minecraft Server Manager 3";
             Load += Form1_Load;
+            FormClosing += Form1_FormClosing;
             menuStrip1.ResumeLayout(false);
             menuStrip1.PerformLayout();
             groupBoxInfo.ResumeLayout(false);
