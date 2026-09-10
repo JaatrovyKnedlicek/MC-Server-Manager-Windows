@@ -450,6 +450,7 @@ namespace MC_Server_Manager_3
             listBoxPlayers.Size = new Size(200, 139);
             listBoxPlayers.TabIndex = 7;
             listBoxPlayers.Visible = true;
+            listBoxPlayers.Click += listBoxPlayers_Click;
             // 
             // labelRconTitle
             // 

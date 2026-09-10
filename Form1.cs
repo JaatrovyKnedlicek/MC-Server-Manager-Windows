@@ -486,6 +486,26 @@ namespace MC_Server_Manager_3
             LoadSelectedServerInfo();
         }
 
+        private void listBoxPlayers_Click(object sender, EventArgs e)
+        {
+            if (listBoxPlayers.SelectedIndex < 0) return;
+            if (SelectedIndex < 0 || SelectedIndex >= servers.Count) return;
+            
+            var playerName = listBoxPlayers.SelectedItem?.ToString();
+            if (string.IsNullOrEmpty(playerName)) return;
+            
+            var s = servers[SelectedIndex];
+            if (!rconConnected || rconClient == null || !rconClient.IsAuthenticated)
+            {
+                MessageBox.Show("RCON is not connected. Cannot fetch player information.", "RCON Not Connected", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+            
+            // Show player info form
+            using var playerInfoForm = new PlayerInfoForm(playerName, rconClient);
+            playerInfoForm.ShowDialog(this);
+        }
+
         // START/STOP SERVER: toggle between starting and gracefully stopping via RCON
         private async void btnStartServer_Click(object sender, EventArgs e)
         {

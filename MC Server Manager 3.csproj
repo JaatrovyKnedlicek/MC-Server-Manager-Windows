@@ -58,4 +58,10 @@
     <PackageReference Include="Open.NAT" Version="2.1.0" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Compile Update="PlayerInfoForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+  </ItemGroup>
+
 </Project>
