@@ -1,6 +1,9 @@
-3.5
+3.6
 - Support for Folia, Arclight, Mohist added
 - Performance graphs monitoring CPU, RAM, Network and Disk usage added.
 - Added RCON client and console
 - Added RCON soft stop
 - Added RCON player list and managment.
+- Added RCON debugger.
+
+Internal simplified changelog for development purposes.

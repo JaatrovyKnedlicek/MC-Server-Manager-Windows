@@ -1461,7 +1461,7 @@ namespace MC_Server_Manager_3
             MessageBox.Show("Toggle Status Bar - not implemented yet.", "View", MessageBoxButtons.OK, MessageBoxIcon.Information);
 
         private void aboutToolStripMenuItem_Click(object sender, EventArgs e) =>
-            MessageBox.Show("Minecraft Server Manager 3\nVersion: 3.5\n© Ján Repka 2026", "About", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            MessageBox.Show("Minecraft Server Manager 3\nVersion: 3.7\n© Ján Repka 2026", "About", MessageBoxButtons.OK, MessageBoxIcon.Information);
 
         private void label1_Click(object sender, EventArgs e) { }
 
