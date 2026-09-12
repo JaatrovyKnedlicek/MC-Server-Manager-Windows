@@ -117,10 +117,15 @@ namespace MC_Server_Manager_3
 
             try
             {
+                // Log hex dump of packet for debugging
+                Debug.WriteLine($"[RCON] Sending packet hex: {BitConverter.ToString(packetData)}");
+
                 lock (_lock)
                 {
                     _stream.Write(packetData, 0, packetData.Length);
                 }
+
+                Debug.WriteLine($"[RCON] ✅ Packet sent successfully ({packetData.Length} bytes)");
 
                 // Read response
                 var responsePacket = await ReadPacketAsync(cancellationToken);
@@ -140,33 +145,38 @@ namespace MC_Server_Manager_3
         private byte[] BuildPacket(int requestId, PacketType type, string payload)
         {
             var payloadBytes = Encoding.UTF8.GetBytes(payload);
-            int length = 4 + 4 + payloadBytes.Length + 4 + 1; // length + id + type + payload + null terminator + empty string null terminator
+            // According to RCON protocol:
+            // Length = 4 (RequestId) + 4 (Type) + PayloadLength + 1 (String Null) + 1 (Packet Null)
+            int length = 4 + 4 + payloadBytes.Length + 1 + 1;
 
             var packet = new byte[length + 4]; // +4 for length field itself
 
             int offset = 0;
-            
-            // Length
+
+            // Length (4 bytes) - Total length of remaining packet bytes
             BitConverter.GetBytes(length).CopyTo(packet, offset);
             offset += 4;
 
-            // Request ID
+            // Request ID (4 bytes)
             BitConverter.GetBytes(requestId).CopyTo(packet, offset);
             offset += 4;
 
-            // Type
+            // Type (4 bytes)
             BitConverter.GetBytes((int)type).CopyTo(packet, offset);
             offset += 4;
 
-            // Payload
+            // Payload (variable length bytes)
             Buffer.BlockCopy(payloadBytes, 0, packet, offset, payloadBytes.Length);
             offset += payloadBytes.Length;
 
-            // Null terminator for payload
+            // String Null Terminator (1 byte) - Ends the UTF-8 string
             packet[offset++] = 0;
 
-            // Empty string null terminator
+            // Packet Null Terminator (1 byte) - Ends the entire packet
             packet[offset++] = 0;
+
+            Debug.WriteLine($"[RCON] Packet built: Length={length}, RequestId={requestId}, Type={type}, PayloadBytes={payloadBytes.Length}");
+            Debug.WriteLine($"[RCON] Total packet size: {packet.Length} bytes (4 length + {length} payload)");
 
             return packet;
         }
@@ -183,12 +193,17 @@ namespace MC_Server_Manager_3
                 await ReadExactAsync(_stream, lengthBytes, 4, cancellationToken);
                 int length = BitConverter.ToInt32(lengthBytes, 0);
 
+                Debug.WriteLine($"[RCON] Received packet length field: {length} bytes");
+                Debug.WriteLine($"[RCON] Length field hex: {BitConverter.ToString(lengthBytes)}");
+
                 if (length < 10 || length > 4096) // Sanity check
                     throw new InvalidOperationException($"Received invalid packet length: {length} bytes. Expected between 10 and 4096 bytes.");
 
                 // Read the rest of the packet
                 var packetBytes = new byte[length];
                 await ReadExactAsync(_stream, packetBytes, length, cancellationToken);
+
+                Debug.WriteLine($"[RCON] Full packet hex: {BitConverter.ToString(packetBytes)}");
 
                 int offset = 0;
 

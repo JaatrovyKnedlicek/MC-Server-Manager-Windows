@@ -777,12 +777,15 @@ namespace MC_Server_Manager_3
         {
             if (!s.RconEnabled || string.IsNullOrEmpty(s.RconPassword))
             {
+                System.Diagnostics.Debug.WriteLine($"[RCON] RCON not enabled for server {s.Name}");
                 this.Invoke(() =>
                 {
                     LoadSelectedServerInfo();
                 });
                 return;
             }
+
+            System.Diagnostics.Debug.WriteLine($"[RCON] Attempting to connect to {s.Name} at 127.0.0.1:{s.RconPort}");
 
             // Retry connection multiple times since server might not be ready immediately
             const int maxRetries = 10;
@@ -792,6 +795,8 @@ namespace MC_Server_Manager_3
             {
                 try
                 {
+                    System.Diagnostics.Debug.WriteLine($"[RCON] Connection attempt {attempt + 1}/{maxRetries}...");
+
                     // Use localhost since we're running the server locally
                     rconClient = new RconClient("127.0.0.1", s.RconPort, s.RconPassword);
                     bool connected = await rconClient.ConnectAsync();
@@ -799,11 +804,14 @@ namespace MC_Server_Manager_3
                     if (connected)
                     {
                         rconConnected = true;
+                        System.Diagnostics.Debug.WriteLine($"[RCON] ✅ Successfully connected and authenticated to {s.Name}");
+
                         // Update UI on the main thread
                         this.Invoke(() =>
                         {
                             LoadSelectedServerInfo();
                         });
+
                         // Fetch players after successful connection
                         _ = FetchPlayersFromRconAsync(s);
                         return; // Success, exit the retry loop
@@ -811,6 +819,7 @@ namespace MC_Server_Manager_3
                     else
                     {
                         rconConnected = false;
+                        System.Diagnostics.Debug.WriteLine($"[RCON] ⚠️ Connection returned false on attempt {attempt + 1}");
                         rconClient?.Dispose();
                         rconClient = null;
                     }
@@ -818,7 +827,8 @@ namespace MC_Server_Manager_3
                 catch (Exception ex)
                 {
                     // Log the error for debugging
-                    System.Diagnostics.Debug.WriteLine($"RCON connection attempt {attempt + 1} failed: {ex.Message}");
+                    System.Diagnostics.Debug.WriteLine($"[RCON] ❌ Connection attempt {attempt + 1} failed: {ex.Message}");
+                    System.Diagnostics.Debug.WriteLine($"[RCON] Exception details: {ex.GetType().Name}");
                     rconConnected = false;
                     rconClient?.Dispose();
                     rconClient = null;
@@ -831,11 +841,13 @@ namespace MC_Server_Manager_3
                 }
             }
 
-            // All retries failed, update UI to show button as disabled
-            this.Invoke(() =>
-            {
-                LoadSelectedServerInfo();
-            });
+            // All connection attempts failed
+            System.Diagnostics.Debug.WriteLine($"[RCON] ❌ Failed to connect to {s.Name} after {maxRetries} attempts");
+            System.Diagnostics.Debug.WriteLine($"[RCON] Please check:");
+            System.Diagnostics.Debug.WriteLine($"[RCON] 1. Is the Minecraft server running?");
+            System.Diagnostics.Debug.WriteLine($"[RCON] 2. Is 'enable-rcon=true' in server.properties?");
+            System.Diagnostics.Debug.WriteLine($"[RCON] 3. Does 'rcon.port={s.RconPort}' match in server.properties?");
+            System.Diagnostics.Debug.WriteLine($"[RCON] 4. Is 'rcon.password' set to '{s.RconPassword}' in server.properties?");
         }
 
         // Fetch players from RCON using the 'list' command
@@ -843,17 +855,33 @@ namespace MC_Server_Manager_3
         {
             if (!rconConnected || rconClient == null || !rconClient.IsAuthenticated)
             {
+                System.Diagnostics.Debug.WriteLine("[RCON] RCON not connected or not authenticated. Skipping player fetch.");
                 return;
             }
 
             try
             {
+                System.Diagnostics.Debug.WriteLine($"[RCON] Sending 'list' command to server {s.Name}...");
                 var response = await rconClient.SendCommandAsync("list");
+
+                System.Diagnostics.Debug.WriteLine($"[RCON] Server response: '{response}'");
+
+                // Check if response contains an error
+                if (response.Contains("Error executing", StringComparison.OrdinalIgnoreCase))
+                {
+                    System.Diagnostics.Debug.WriteLine($"[RCON] ⚠️ Server returned an error: {response}");
+                    System.Diagnostics.Debug.WriteLine("[RCON] This usually means:");
+                    System.Diagnostics.Debug.WriteLine("[RCON] 1. RCON is not properly enabled in server.properties");
+                    System.Diagnostics.Debug.WriteLine("[RCON] 2. The Minecraft server may be in a broken state");
+                    System.Diagnostics.Debug.WriteLine("[RCON] 3. Try restarting the Minecraft server and reconnecting");
+                    return;
+                }
+
                 if (!string.IsNullOrEmpty(response))
                 {
                     // Parse the response. Expected format: "There are X out of Y max players online: player1, player2, ..."
                     var players = ParsePlayerList(response);
-                    
+
                     this.Invoke(() =>
                     {
                         s.Players.Clear();
@@ -861,10 +889,16 @@ namespace MC_Server_Manager_3
                         LoadSelectedServerInfo();
                     });
                 }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine("[RCON] ⚠️ Server returned empty response for 'list' command");
+                }
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Failed to fetch players from RCON: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"[RCON] ❌ Failed to fetch players from RCON: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"[RCON] Exception type: {ex.GetType().Name}");
+                System.Diagnostics.Debug.WriteLine($"[RCON] Stack trace: {ex.StackTrace}");
             }
         }
 
