@@ -1132,7 +1132,7 @@ namespace MC_Server_Manager_3
             {
                 using var http = new HttpClient();
                 http.Timeout = TimeSpan.FromSeconds(5);
-                http.DefaultRequestHeaders.UserAgent.ParseAdd("MCServerManager/3.5 (https://github.com/JaatrovyKnedlicek/MC-Server-Manager-Windows)");
+                http.DefaultRequestHeaders.UserAgent.ParseAdd("MCServerManager/3.7 (https://github.com/JaatrovyKnedlicek/MC-Server-Manager-Windows)");
                 var ip = (await http.GetStringAsync("https://api.ipify.org")).Trim();
                 if (string.IsNullOrEmpty(ip)) ip = "N/A";
                 cachedPublicIp = ip;
