@@ -379,11 +379,11 @@ namespace MC_Server_Manager_3
                 // Get player IP/address (using /msg or other commands)
                 // Note: Getting player IP requires server plugins or specific configurations
                 // We'll try with basic commands first
-                var ipResponse = await rconClient.SendCommandAsync($"msg {playerName} Your IP is being logged by the server admin.");
                 // In reality, getting IP requires server-side plugins or configuration
-                this.Invoke(() => lblIP.Text = "Not available (requires server plugin)");
-                
+                this.Invoke(() => lblIP.Text = "Not implemented yet");
+
                 // Check OP status
+
                 var opResponse = await rconClient.SendCommandAsync("op list");
                 this.Invoke(() => lblOP.Text = opResponse?.Contains(playerName, StringComparison.OrdinalIgnoreCase) == true ? "Yes" : "No");
                 
