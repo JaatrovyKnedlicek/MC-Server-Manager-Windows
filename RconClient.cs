@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
@@ -44,7 +45,7 @@ namespace MC_Server_Manager_3
                 if (completedTask == timeoutTask)
                 {
                     Disconnect();
-                    return false;
+                    throw new TimeoutException($"Connection to {_host}:{_port} timed out after {timeoutMs}ms");
                 }
 
                 await connectTask; // Ensure connection is actually established
@@ -57,10 +58,10 @@ namespace MC_Server_Manager_3
                 // Authenticate immediately after connection
                 return await AuthenticateAsync(cancellationToken);
             }
-            catch
+            catch (Exception ex)
             {
                 Disconnect();
-                return false;
+                throw new InvalidOperationException($"Failed to connect to RCON server at {_host}:{_port}: {ex.Message}", ex);
             }
         }
 
@@ -69,22 +70,22 @@ namespace MC_Server_Manager_3
             try
             {
                 var response = await SendPacketAsync(PacketType.Auth, _password, cancellationToken);
-                
+
                 if (response != null && response.Type == PacketType.AuthResponse)
                 {
                     _isAuthenticated = true;
                     return true;
                 }
 
-                return false;
+                throw new InvalidOperationException($"Authentication failed: Received null or invalid response. Response type: {response?.Type.ToString() ?? "null"}");
             }
-            catch
+            catch (Exception ex)
             {
-                return false;
+                throw new InvalidOperationException($"RCON authentication failed: {ex.Message}", ex);
             }
         }
 
-        public async Task<string?> SendCommandAsync(string command, CancellationToken cancellationToken = default)
+        public async Task<string> SendCommandAsync(string command, CancellationToken cancellationToken = default)
         {
             if (!_isAuthenticated)
             {
@@ -92,19 +93,28 @@ namespace MC_Server_Manager_3
             }
 
             var response = await SendPacketAsync(PacketType.Command, command, cancellationToken);
-            return response?.Payload;
+
+            if (response == null)
+            {
+                Debug.WriteLine($"[RCON] SendPacketAsync returned null response for command: {command}");
+                throw new InvalidOperationException($"Server returned null response for command: {command}");
+            }
+
+            var payload = response.Payload ?? string.Empty;
+            Debug.WriteLine($"[RCON] Command '{command}' returned payload: '{payload}'");
+            return payload;
         }
 
         private async Task<RconPacket?> SendPacketAsync(PacketType type, string payload, CancellationToken cancellationToken = default)
         {
             if (_stream == null)
-                throw new InvalidOperationException("Not connected");
+                throw new InvalidOperationException("Not connected. NetworkStream is null. Call ConnectAsync first.");
 
             int requestId = _requestId++;
 
             // Send packet
             var packetData = BuildPacket(requestId, type, payload);
-            
+
             try
             {
                 lock (_lock)
@@ -114,12 +124,16 @@ namespace MC_Server_Manager_3
 
                 // Read response
                 var responsePacket = await ReadPacketAsync(cancellationToken);
+                if (responsePacket == null)
+                {
+                    throw new InvalidOperationException($"Received null response packet after sending {type} request with ID {requestId}. Server may have closed the connection or sent invalid data.");
+                }
                 return responsePacket;
             }
-            catch
+            catch (Exception ex)
             {
                 Disconnect();
-                throw;
+                throw new InvalidOperationException($"Error sending {type} packet (ID: {requestId}, payload length: {payload?.Length ?? 0}): {ex.Message}", ex);
             }
         }
 
@@ -160,7 +174,7 @@ namespace MC_Server_Manager_3
         private async Task<RconPacket?> ReadPacketAsync(CancellationToken cancellationToken = default)
         {
             if (_stream == null)
-                return null;
+                throw new InvalidOperationException("NetworkStream is null. Connection may have been closed.");
 
             try
             {
@@ -170,7 +184,7 @@ namespace MC_Server_Manager_3
                 int length = BitConverter.ToInt32(lengthBytes, 0);
 
                 if (length < 10 || length > 4096) // Sanity check
-                    return null;
+                    throw new InvalidOperationException($"Received invalid packet length: {length} bytes. Expected between 10 and 4096 bytes.");
 
                 // Read the rest of the packet
                 var packetBytes = new byte[length];
@@ -194,13 +208,35 @@ namespace MC_Server_Manager_3
                     payloadLength++;
                 }
 
-                string payload = Encoding.UTF8.GetString(packetBytes, offset, payloadLength);
+                // Debug logging: print raw payload bytes count
+                Debug.WriteLine($"[RCON] Received payload bytes: {payloadLength}");
+
+                // Safely extract payload and trim trailing null bytes
+                byte[] payloadBytes = new byte[payloadLength];
+                if (payloadLength > 0)
+                {
+                    Array.Copy(packetBytes, offset, payloadBytes, 0, payloadLength);
+                }
+
+                // Convert to string safely, handling empty payloads
+                string payload = payloadLength > 0 
+                    ? Encoding.UTF8.GetString(payloadBytes).TrimEnd('\0') 
+                    : string.Empty;
+
+                // If payload is empty after trimming, log it
+                if (string.IsNullOrEmpty(payload))
+                {
+                    Debug.WriteLine($"[RCON] Empty payload received for packet type {type}, request ID {requestId}");
+                    payload = string.Empty; // Ensure it's empty string, not null
+                }
+
+                Debug.WriteLine($"[RCON] Parsed payload: '{payload}' (Type: {type}, RequestId: {requestId})");
 
                 return new RconPacket(requestId, type, payload);
             }
-            catch
+            catch (Exception ex)
             {
-                return null;
+                throw new InvalidOperationException($"Failed to read or parse RCON packet: {ex.Message}", ex);
             }
         }
 
@@ -211,7 +247,7 @@ namespace MC_Server_Manager_3
             {
                 int read = await stream.ReadAsync(buffer, bytesRead, bytesToRead - bytesRead, cancellationToken);
                 if (read == 0)
-                    throw new InvalidOperationException("Connection closed");
+                    throw new InvalidOperationException($"Connection closed by remote host. Expected to read {bytesToRead - bytesRead} more bytes, but got 0. Total bytes read so far: {bytesRead}/{bytesToRead}");
                 bytesRead += read;
             }
         }
